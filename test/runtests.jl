@@ -56,6 +56,8 @@ end
     XX = [ones(n) X[:, 2] (X[:, 2] .* X[:, 3])]
     XX, _, _ = svd(XX)
     @test isapprox(sum(svd(XX'*D1).S), 3, rtol=0.01, atol=0.01)
+
+    @test Earth.checkstate(m)
 end
 
 @testset "Basic prune" begin
@@ -75,6 +77,10 @@ end
     XX = [ones(n) X[:, 2] (X[:, 2] .* X[:, 3])]
     XX, _, _ = svd(XX)
     @test isapprox(sum(svd(XX'*D1).S), 3, rtol=0.01, atol=0.01)
+
+    # Check the residuals
+    resid = y - D1 * (D1' * y)
+    @test isapprox(resid, m.resid)
 end
 
 @testset "Basic constraints" begin
@@ -96,4 +102,20 @@ end
     XX = [ones(n) X[:, 2] (X[:, 2] .* X[:, 3])]
     XX, _, _ = svd(XX)
     @test isapprox(sum(svd(XX'*D1).S), 3, rtol=0.01, atol=0.01)
+end
+
+@testset "Predict" begin
+
+    rng = StableRNG(123)
+
+    n = 1000
+    X = randn(rng, n, 3)
+    y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
+
+    for prune in [false]
+        m = fit(EarthModel, X, y; maxit=3, knots=100, prune=prune, verbose=false)
+        yhat1 = predict(m)
+        yhat2 = predict(m, X)
+        @test isapprox(yhat1, yhat2)
+    end
 end
