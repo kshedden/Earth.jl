@@ -11,10 +11,11 @@ that MARS was conceived.
 ## Usage
 
 The following example fits an additive model using two explanatory
-variables.
+variables.  The additive contribution of X1 is quadratic and the
+additive contribution of X2 is linear.
 
 ````julia
-using Earth, Plots, StableRNGs, LaTeXStrings
+using Earth, Plots, StableRNGs, LaTeXStrings, Statistics, Printf
 
 rng = StableRNG(123)
 n = 500
@@ -32,12 +33,34 @@ x = -2:0.2:2
 X2 = [zeros(length(x)) x]
 y2 = predict(m, X2)
 
-p1 = plot(x, y1, label=L"$E[y | x_1, x_2=0]$", size=[300, 300])
-p1 = plot!(p1, x, y2, label=L"$E[y | x_1=0, x_2]$")
-Plots.savefig(p1, "./assets/readme1.svg")
+p = plot(x, y1, label=L"$E[y | x_1, x_2=0]$", size=[300, 300])
+p = plot!(p, x, y2, label=L"$E[y | x_1=0, x_2]$")
+Plots.savefig(p, "./assets/readme1.svg")
 ````
 
-![Example plot 2](assets/readme1.svg)
+![Example plot 1](assets/readme1.svg)
+
+The following example has a nonlinear and non-additive
+mean structure. The standard deviation of the residuals
+is very close to the standard deviation of the residuals,
+which is 1.
+
+````julia
+rng = StableRNG(123)
+n = 500
+X = randn(rng, n, 2)
+y = X[:, 1].^3 + X[:, 1] .* X[:, 2] + randn(rng, n)
+m = fit(EarthModel, X, y; maxorder=1)
+
+yhat = predict(m)
+res = residuals(m)
+
+p = plot(yhat, res, size=[300, 300], xlabel="Fitted values",
+         ylabel=@sprintf("Residuals (SD=%.2f)", std(res)))
+Plots.savefig(p, "./assets/readme2.svg")
+````
+
+![Example plot 2](assets/readme2.svg)
 
 ## References
 
