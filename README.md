@@ -29,7 +29,7 @@ p1 = plot(x, y1)
 Plots.savefig(p1, "./assets/readme1.svg")
 ````
 
-![Example plot 1](assets/readme1.svg | width=200)
+![Example plot 1](assets/readme1.svg | width=200px)
 
 Estimate E[y | x1=0, x2]
 
@@ -41,7 +41,7 @@ p2 = plot(x, y2)
 Plots.savefig(p2, "./assets/readme2.svg")
 ````
 
-![Example plot 2](assets/readme2.svg | width=200)
+![Example plot 2](assets/readme2.svg | width=200px)
 
 ## References
 
