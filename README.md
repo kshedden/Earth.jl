@@ -1,7 +1,3 @@
-```@meta
-EditURL = "<unknown>/README.jl"
-```
-
 # Earth/MARS
 
 This is a Julia implementation of a regression modeling procedure that
@@ -12,8 +8,8 @@ The original MARS used backward selection for model pruning, but this
 implementation uses the Lasso, which was not invented yet at the time
 that MARS was conceived.
 
-````@example README
-using Earth, UnicodePlots, StableRNGs
+````julia
+using Earth, Plots, StableRNGs
 
 rng = StableRNG(123)
 n = 500
@@ -25,27 +21,27 @@ m = fit(EarthModel, X, y; maxorder=1)
 
 Estimate E[y | x1, x2=0]
 
-````@example README
+````julia
 x = -2:0.2:2
 X1 = [x zeros(length(x))]
 y1 = predict(m, X1)
-p1 = lineplot(x, y1)
-savefig("./assets/readme1.svg", p1)
+p1 = plot(x, y1)
+Plots.savefig(p1, "./assets/readme1.svg")
 ````
 
-![Example plot 1](assets/readme1.svg)
+![Example plot 1](assets/readme1.txt)
 
 Estimate E[y | x1=0, x2]
 
-````@example README
+````julia
 x = -2:0.2:2
 X2 = [zeros(length(x)) x]
 y2 = predict(m, X2)
-p2 = lineplot(x, y2)
-savefig("./assets/readme2.svg", p2)
+p2 = plot(x, y2)
+Plots.savefig(p2, "./assets/readme2.svg")
 ````
 
-![Example plot 2](assets/readme2.svg)
+![Example plot 2](assets/readme2.txt)
 
 ## References
 
