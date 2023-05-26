@@ -8,8 +8,13 @@ The original MARS used backward selection for model pruning, but this
 implementation uses the Lasso, which was not invented yet at the time
 that MARS was conceived.
 
+## Usage
+
+The following example fits an additive model using two explanatory
+variables.
+
 ````julia
-using Earth, Plots, StableRNGs
+using Earth, Plots, StableRNGs, LaTeXStrings
 
 rng = StableRNG(123)
 n = 500
@@ -27,9 +32,8 @@ x = -2:0.2:2
 X2 = [zeros(length(x)) x]
 y2 = predict(m, X2)
 
-p1 = plot(x, y1, label=r"$E[y | x_1, x_2=0]$", size=[300, 300])
-p1 = plot!(p1, x, y2, label=r"$E[y | x_1=0, x_2]$")
-
+p1 = plot(x, y1, label=L"$E[y | x_1, x_2=0]$", size=[300, 300])
+p1 = plot!(p1, x, y2, label=L"$E[y | x_1=0, x_2]$")
 Plots.savefig(p1, "./assets/readme1.svg")
 ````
 
