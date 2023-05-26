@@ -25,11 +25,11 @@ Estimate E[y | x1, x2=0]
 x = -2:0.2:2
 X1 = [x zeros(length(x))]
 y1 = predict(m, X1)
-p1 = plot(x, y1)
+p1 = plot(x, y1, size=[200, 200])
 Plots.savefig(p1, "./assets/readme1.svg")
 ````
 
-![Example plot 1](assets/readme1.svg | width=200px)
+![Example plot 1](assets/readme1.svg)
 
 Estimate E[y | x1=0, x2]
 
@@ -37,11 +37,11 @@ Estimate E[y | x1=0, x2]
 x = -2:0.2:2
 X2 = [zeros(length(x)) x]
 y2 = predict(m, X2)
-p2 = plot(x, y2)
+p2 = plot(x, y2, size=[200, 200])
 Plots.savefig(p2, "./assets/readme2.svg")
 ````
 
-![Example plot 2](assets/readme2.svg | width=200px)
+![Example plot 2](assets/readme2.svg)
 
 ## References
 
