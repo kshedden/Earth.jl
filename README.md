@@ -55,7 +55,8 @@ m = fit(EarthModel, X, y; maxorder=1)
 yhat = predict(m)
 res = residuals(m)
 
-p = plot(yhat, res, size=[300, 300], xlabel="Fitted values",
+p = plot(yhat, res, label=nothing, size=[300, 300], seriestype=:scatter,
+         xlabel="Fitted values",
          ylabel=@sprintf("Residuals (SD=%.2f)", std(res)))
 Plots.savefig(p, "./assets/readme2.svg")
 ````
