@@ -4,5 +4,5 @@ module Earth
     export fit, nobs, modelmatrix, response, residuals, predict
     export EarthModel, gcv, gr2
 
-    include("earth.jl")
+    include("fitearth.jl")
 end

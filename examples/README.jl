@@ -4,9 +4,10 @@
 # is similar to Jerome Friedman's 1991 Multivariate Adaptive Regression
 # Splines (MARS), which is also known as Earth for trademark reasons.
 
-# The original MARS used backward selection for model pruning, but this
-# implementation uses the Lasso, which was not invented yet at the time
-# that MARS was conceived.
+# The forward (basis-construction) phase used here should be identical
+# to the original MARS procedure.  While the original MARS used backward
+# selection for model pruning, this implementation uses the Lasso, which
+# was not invented yet at the time that MARS was conceived.
 
 # ## Usage
 
@@ -67,7 +68,7 @@ Plots.savefig(p, "./assets/readme2.svg")
 
 # ![Example plot 2](assets/readme2.svg)
 
-p = plot(m.nterms, gr2(m), label=nothing, size=(400, 300),
+p = plot(m.nterms, gr2(m), label=L"Estimated $r^2$", size=(400, 300),
          xlabel="Number of terms", ylabel=L"$r^2$")
 p = plot!(p, m.nterms, cor(Ey, y)^2*ones(length(m.nterms)), label=L"True $r^2$")
 Plots.savefig(p, "./assets/readme3.svg")
