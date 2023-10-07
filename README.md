@@ -49,7 +49,7 @@ of X1 and X2 to the fitted regression model.
 
 The following example has a nonlinear and non-additive
 mean structure. The standard deviation of the residuals
-is very close to the standard deviation of the residuals,
+is very close to the standard deviation of the errors,
 which is 1.
 
 ````julia
