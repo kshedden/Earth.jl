@@ -124,15 +124,17 @@ function gr2(E::EarthModel)
     return 1 .- g / g[1]
 end
 
-function get_knots(x::AbstractVector, knots::Int)
-    n = length(x)
+# Return a vector containing knots for the values in `x`.  The knots
+# lie on quantiles of `x` corresponding to equi-spaced probability
+# points.
+function get_knots(x::AbstractVector{<:Real}, knots::Int)
     pp = range(0, 1, knots)
-    return [quantile(x, p) for p in pp]
+    return Float64[quantile(x, p) for p in pp]
 end
 
 # Constructor
-function EarthModel(X::AbstractMatrix, y::AbstractVector, knots; constraints=Set{Vector{Bool}}(),
-                    maxorder=2, knot_penalty=2)
+function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots; constraints=Set{Vector{Bool}}(),
+                    maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2))
     n, p = size(X)
     if length(y) != n
         throw(ArgumentError("The length of y must match the leading dimension of X."))
@@ -152,7 +154,7 @@ function EarthModel(X::AbstractMatrix, y::AbstractVector, knots; constraints=Set
     # Initial basis consisting only of the intercept
     z = ones(n)
     D = [z]
-    U = [z / norm(z)]
+    U = [z ./ sqrt(n)]
     edof = Float64[1]
     rss = Float64[sum(abs2, resid)]
     nterms = Int[1]
@@ -163,17 +165,28 @@ end
 
 """
     fit(EarthModel, X, y; knots=20, maxit=10, constraints=Set{Vector{Bool}}(),
-        prune=true, verbose=false, knot_penalty=2, maxorder=2)
+        prune=true, verbose=false, knot_penalty=ifelse(maxorder>1, 3, 2), maxorder=2)
 
 Fit a regression model using an approach similar to Friedman's 1991
 MARS procedure (also known as Earth for trademark reasons).  The
-design matrix `X` is a design matrix of covariates (do not include
-an intercept), and the vector `y` contains the response values.
+design matrix `X` is a design matrix of covariates (do not include an
+intercept as this is included automatically), and the vector `y`
+contains the response values.
 
-Earth/MARS involves two steps: a greedy basis construction approach
-followed by a pruning approach that eliminates irrelevant terms.  The
-basis functions are products of hinge functions.  This implementation
-uses the Lasso instead of back-selection to prune the model.
+Earth/MARS involves two steps: a greedy basis construction followed by
+pruning step that aims to eliminate irrelevant terms.  The basis
+functions are products of hinge functions.  This implementation uses
+the Lasso instead of back-selection to prune the model.
+
+# Keyword arguments
+
+- `knots`: The number of hinge function knots for each variable.
+- `maxit`: The number of basis construction iterations.
+- `constraints`: A set of bit vectors that constrain the combinations of variables that can be used to produce a term.
+- `prune`: If false, perform the basis construction step but do not perform the pruning step.
+- `verbose`: Print some information as the fitting algorithm runs.
+- `knot_penalty`: A parameter that controls how easily a new term can enter the model.
+- `maxorder`: The maximum number of distinct variables that can be present in a single term.
 
 References:
 
@@ -208,34 +221,18 @@ function fit!(E::EarthModel; maxit=10, prune=true, verbose=verbose)
 end
 
 # Replace z with its projection onto the orthogonal complement of the
-# subspace spanned by the columns in U.  Assumes that the columns in
-# U are orthonormal.
+# subspace spanned by the columns in U.  Assumes that the columns in U
+# are orthonormal.
 function residualize!(U::Vector{Vector{Float64}}, z::Vector{Float64})
     for u in U
         z .-= dot(u, z) * u
     end
 end
 
-# Expand the model by adding a new basis function.  The new basis function
-# is constructed by multiplying the current term in position 'iterm' by
-# the hinge function 'h'.  The vector 'z' contains the current values
-# of the basis function in position 'iterm'.
-function addterm!(E::EarthModel, iterm::Int, h::Hinge, z::Vector{Float64})
-    term = E.Terms[iterm]
-    newterm = deepcopy(term)
-    push!(newterm.hinges, h)
-    newterm.vmask[h.var] = 1
-    push!(E.Terms, newterm)
-    push!(E.D, copy(z))
-    z = copy(z)
-    residualize!(E.U, z)
-    z ./= norm(z)
-    push!(E.U, z)
-end
-
-# Check the consistency of the internal state of E (used for debugging).
-# This should run without error up to the pruning step, but not after
-# the pruning step.
+# Check the consistency of the internal state of .  This function is
+# used only for debugging.  This function should run without error
+# after building the basis functions but before performing the pruning
+# step.
 function checkstate(E::EarthModel)
 
     (; y, X, D) = E
@@ -271,6 +268,34 @@ function checkstate(E::EarthModel)
     return true
 end
 
+# Expand the model by adding a new basis function.  The new basis
+# function is constructed by multiplying the current term in position
+# 'iterm' by the hinge function 'h'.  The vector 'z' contains the
+# current values of the basis function in position 'iterm'.
+function addterm!(E::EarthModel, iterm::Int, h::Hinge, z::Vector{Float64})
+    term = E.Terms[iterm]
+
+    # Specification of the term to be added
+    newterm = deepcopy(term)
+    push!(newterm.hinges, h)
+    newterm.vmask[h.var] = 1
+    push!(E.Terms, newterm)
+
+    # Add the term data
+    push!(E.D, copy(z))
+    z = copy(z)
+
+    # Add the unique component of the new term (the part
+    # that is orthogonal to all other terms in the model)
+    residualize!(E.U, z)
+    z ./= norm(z)
+    push!(E.U, z)
+end
+
+# Expand the model by adding a new basis function.  The new basis
+# function is constructed by multiplying the current term in position
+# 'iterm' by a hinge function derived from variable `ivar`, using the
+# knot in position `icut` of the member `K` of the EarthModel.
 function addterm!(E::EarthModel, iterm::Int, ivar::Int, icut::Int)
 
     n = nobs(E)
@@ -289,15 +314,22 @@ function addterm!(E::EarthModel, iterm::Int, ivar::Int, icut::Int)
     push!(E.nterms, length(E.D))
 end
 
-# Construct a pair of mirror image hinge functions.
+# Construct a pair of mirror image hinge functions.  The term with
+# index 'iterm' is multiplied by left and right hinge functions based
+# on the variable with index 'ivar'.  The hinge functions are
+# constructed using the knot at position 'icut'.  The newly
+# constructed terms are written into the arrays 'z1' and 'z2'.
 function mirrorbasis(E::EarthModel, iterm::Int, ivar::Int, icut::Int, z1::Vector{Float64}, z2::Vector{Float64})
     (; Terms, K, D, X) = E
     t = Terms[iterm]
     z = D[iterm]
+
+    # Create the right hinge
     h1 = Hinge(ivar, K[ivar][icut], true)
     z1 .= z
     update!(h1, X, z1)
 
+    # Create the left hinge
     h2 = Hinge(ivar, K[ivar][icut], false)
     z2 .= z
     update!(h2, X, z2)
@@ -305,7 +337,13 @@ function mirrorbasis(E::EarthModel, iterm::Int, ivar::Int, icut::Int, z1::Vector
     return h1, h2
 end
 
-function fitreg(E::EarthModel, z1, z2)
+# Calculate fitted values for a model that adds variables `z1` and
+# `z2` to the current model.  These variables are only included if
+# they have norm exceeding `qtol` when residualized against all terms
+# that are already in the model.  This function returns updated fitted
+# values, and indicators of whether each of the new terms was used to
+# determine the fit.
+function fitreg(E::EarthModel, z1, z2; qtol::Float64=1e-10)
 
     (; U, resid) = E
 
@@ -316,10 +354,14 @@ function fitreg(E::EarthModel, z1, z2)
     residualize!(U, z2)
 
     fitval = zeros(n)
+
+    # Determine which of the two new terms should be added to
+    # the model.  Terms that are almost identically zero are
+    # not added.
     nz1 = norm(z1)
-    t1 = nz1 > 1e-10
+    t1 = nz1 > qtol
     nz2 = norm(z2)
-    t2 = nz2 > 1e-10
+    t2 = nz2 > qtol
 
     if t1
         fitval .+= z1 * dot(z1, resid) / nz1^2
@@ -345,7 +387,10 @@ function checkvar(E::EarthModel, iterm::Int, ivar::Int, icut::Int, z1::Vector{Fl
     return sum(abs2, resid - ya)
 end
 
-# Check if the given term can be added to the model.
+# Check if the given term can be added to the model.  A term cannot be
+# added to the model if its order exceeds `maxorder` or if it contains
+# a combination of terms that is not in `constraints`.  If
+# `constraints` is empty then the latter condition is not tested.
 function isvalid(E::EarthModel, iterm::Int, ivar::Int)
     (; Terms, constraints, maxorder) = E
     t = Terms[iterm]
@@ -365,15 +410,27 @@ function nextterm!(E::EarthModel)
     z1 = zeros(n)
     z2 = zeros(n)
 
+    # The parameters of the best term yet seen
     ii, jj, kk = -1, -1, -1
     rr = Inf
 
+    # Each term can be the parent of the new term.
     for i in eachindex(E.Terms)
+
+        # Each variable can combine with the parent term
+        # to produce the new term.
         for j in 1:p
+
+            # The variable j is used to produce a hinge function,
+            # which requires specification of a knot.
             for k in eachindex(K[j])
+
+                # Skip terms that do not satisfy declared constraints
                 if !isvalid(E, i, j)
                     continue
                 end
+
+                # Check if this is the best term yet seen
                 r = checkvar(E, i, j, k, z1, z2)
                 if r < rr
                     ii, jj, kk = i, j, k
@@ -409,8 +466,8 @@ function prune!(E)
     E.resid = y - D * E.coef
 end
 
-# Update the basis vector z in-place by multiplying it by the
-# given hinge function.
+# Update the basis vector `z` in-place by multiplying it by the hinge
+# function `h`.
 function update!(h::Hinge, X::AbstractMatrix, z::AbstractVector)
     if h.var < 0
         # If var < 0, the hinge function is the intercept.
