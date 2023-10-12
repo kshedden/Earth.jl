@@ -1,9 +1,10 @@
+using CategoricalArrays
+using Lasso
+using LinearAlgebra
+using DataFrames
+using ProgressMeter
 using Statistics
 using StatsBase
-using CategoricalArrays
-using LinearAlgebra
-using Lasso
-using DataFrames
 
 # A hinge function for the variable in position 'var' of the parent
 # data matrix.  The hinge is located at 'cut'.  If 'dir' == true, the
@@ -295,17 +296,25 @@ function fit(::Type{EarthModel}, X, y; knots=20, maxit=10, constraints=Set{Vecto
 end
 
 function fit!(E::EarthModel; maxit=10, prune=true, verbose=verbose)
+
+    # Basis construction
+    pr = Progress(maxit; desc="Building basis...", enabled=verbose)
     for k in 1:maxit
-        verbose && println("$(k)...")
+        verbose && next!(pr)
         nextterm!(E)
     end
+    verbose && finish!(pr)
+
+    # Pruning
+    pr = Progress(maxit; desc="Pruning...", enabled=verbose)
     if prune
-        verbose && println("Pruning...")
+        verbose && next!(pr)
         prune!(E)
     else
         D = hcat(E.D...)
         E.coef = qr(D) \ E.y
     end
+    verbose && finish!(pr)
 end
 
 # Replace z with its projection onto the orthogonal complement of the

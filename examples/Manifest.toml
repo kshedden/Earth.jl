@@ -18,6 +18,12 @@ version = "1.5.0"
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
     Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[deps.Aqua]]
+deps = ["Compat", "Pkg", "Test"]
+git-tree-sha1 = "26c25461f946ef74512b3d6fd115d732912ba74a"
+uuid = "4c88cf16-eb10-579e-8560-4a9242c79595"
+version = "0.7.3"
+
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 version = "1.1.1"
@@ -156,8 +162,10 @@ uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
 version = "0.6.8"
 
 [[deps.Earth]]
-deps = ["Lasso", "LinearAlgebra", "Statistics", "StatsAPI"]
-git-tree-sha1 = "6884192f0b55bba6d7b343e7950c1e1c14558de8"
+deps = ["Aqua", "CategoricalArrays", "DataFrames", "Lasso", "LinearAlgebra", "Statistics", "StatsAPI", "StatsBase"]
+git-tree-sha1 = "6bee3bde522bec15f3d1a0b90e2aac22ef6b5795"
+repo-rev = "main"
+repo-url = "/home/kshedden/Projects/julia/Earth.jl"
 uuid = "ae24ea40-bf11-4146-8ed5-41e60b83d222"
 version = "0.1.0"
 
