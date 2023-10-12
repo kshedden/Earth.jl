@@ -74,6 +74,9 @@ mutable struct EarthModel
 
     # Variable names
     vnames::Vector{String}
+
+    # The levels of categorical variables
+    levels::Vector{Vector{String}}
 end
 
 function response(E::EarthModel)
@@ -92,7 +95,16 @@ function coefnames(E::EarthModel)
     return E.vnames
 end
 
-function predict(E::EarthModel, X::AbstractMatrix)
+function coef(E::EarthModel)
+    return E.coef
+end
+
+function predict(E::EarthModel, X)
+
+    (; levels, vnames) = E
+
+    cols, _, _ = handle_covars(X)
+    _, X = build_design(cols, levels, vnames)
 
     m, q = size(X)
     d = length(E.D)
@@ -153,7 +165,7 @@ end
 # Constructor
 function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
                     vnames::Vector{<:AbstractString}=[], constraints=Set{Vector{Bool}}(),
-                    maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2))
+                    maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2), levels::Vector{Vector{String}}=[])
     n, p = size(X)
     if length(y) != n
         throw(ArgumentError("The length of y must match the leading dimension of X."))
@@ -191,10 +203,10 @@ function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
     nterms = Int[1]
 
     return EarthModel(MarsTerm[term], D, U, resid, constraints, K, [],
-                      maxorder, rss, edof, nterms, knot_penalty, X, y, vnames)
+                      maxorder, rss, edof, nterms, knot_penalty, X, y, vnames, levels)
 end
 
-function _handle_covars(X)
+function handle_covars(X)
 
     # Get variable names (creating generic names if needed) and
     # a sequence of data columns.
@@ -211,11 +223,20 @@ function _handle_covars(X)
         error("Invalid type $(typeof(X)) for covariates `X`")
     end
 
+    levs = [typeof(c) <: CategoricalArray ? levels(c) : String[] for c in cols]
+
     if length(cols) == 0
         error("No covariates")
     end
 
+    return cols, levs, nams
+end
+
+function build_design(cols, levs, nams)
+
+    # Prepare to insert the expanded names into nams
     nams = Vector{Any}(nams)
+
     A = []
     n = length(first(cols))
     for (j,c) in enumerate(cols)
@@ -225,15 +246,9 @@ function _handle_covars(X)
         a = nams[j]
         if eltype(c) <: Real
             push!(A, Float64.(c))
-        elseif eltype(c) <: AbstractString
-            m = indicatormat(c)'
-            levels = sort(unique(c))
-            nams[j] = ["$(a)::$(x)" for x in levels]
-            push!(A, indicatormat(c)')
         elseif eltype(c) <: CategoricalValue
-            levels = sort(unique(c))
-            nams[j] = ["$(a)::$(x)" for x in levels]
-            push!(A, (levels .== permutedims(c))')
+            nams[j] = ["$(a)::$(x)" for x in levs[j]]
+            push!(A, (levs[j] .== permutedims(c))')
         else
             error("Unknown type `$(eltype(c))` for covariate $(j)")
         end
@@ -260,7 +275,7 @@ the Lasso instead of back-selection to prune the model.
 
 The covariates `X` can be a numeric Matrix, a vector or tuple of vectors,
 or a named tuple whose values are vectors.  In the latter two cases, each
-covariate vector must be of numeric or string type, or be an instance of
+covariate vector must be of numeric or string type, or an instance of
 CategoricalArray. The latter-two types are expanded into binary indicator
 vectors.
 
@@ -283,14 +298,15 @@ https://projecteuclid.org/journals/annals-of-statistics/volume-19/issue-1/Multiv
 function fit(::Type{EarthModel}, X, y; knots=20, maxit=10, constraints=Set{Vector{Bool}}(),
              prune=true, verbose=false, maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2))
 
-    vnames, X = _handle_covars(X)
+    cols, levs, nams = handle_covars(X)
+    vnames, X = build_design(cols, levs, nams)
 
     if typeof(knots) <: Number
         knots = knots * ones(Int, size(X, 2))
     end
 
     E = EarthModel(X, y, knots; vnames=vnames, constraints=constraints,
-                   knot_penalty=knot_penalty, maxorder=2)
+                   knot_penalty=knot_penalty, maxorder=2, levels=levs)
     fit!(E; maxit=maxit, prune=prune, verbose=verbose)
     return E
 end
