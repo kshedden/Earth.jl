@@ -197,9 +197,9 @@ function _handle_covars(X)
 
     # Get variable names (creating generic names if needed) and
     # a sequence of data columns.
-    nams, cols = if typeof(X) <: AbstractMatrix
+    nams, cols = if typeof(X) <: AbstractMatrix{<:Real}
         na = ["v$(j)" for j in 1:size(X, 2)]
-        return na, Float64.(X)
+        na, eachcol(Float64.(X))
     elseif typeof(X) <: DataFrame
         names(X), eachcol(X)
     elseif typeof(X) <: NamedTuple
@@ -229,7 +229,7 @@ function _handle_covars(X)
             levels = sort(unique(c))
             nams[j] = ["$(a)$(x)" for x in levels]
             push!(A, indicatormat(c)')
-        elseif eltype(c) <: CategoricalArray
+        elseif eltype(c) <: CategoricalValue
             levels = sort(unique(c))
             nams[j] = ["$(a)$(x)" for x in levels]
             push!(a, (levels .== c)')

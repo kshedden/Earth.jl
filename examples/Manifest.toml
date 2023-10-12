@@ -2,7 +2,7 @@
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "350dffa86af77ae10694fa7d66fcb7ae9e497a07"
+project_hash = "cc3125183638af1c851cafc58ac5a2cfece3c89b"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -17,6 +17,12 @@ version = "1.5.0"
     [deps.AbstractFFTs.weakdeps]
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
     Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[[deps.Aqua]]
+deps = ["Compat", "Pkg", "Test"]
+git-tree-sha1 = "26c25461f946ef74512b3d6fd115d732912ba74a"
+uuid = "4c88cf16-eb10-579e-8560-4a9242c79595"
+version = "0.7.3"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -156,8 +162,8 @@ uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
 version = "0.6.8"
 
 [[deps.Earth]]
-deps = ["Lasso", "LinearAlgebra", "Statistics", "StatsAPI", "StatsBase"]
-git-tree-sha1 = "26c4ac1e01c02282d258b73d7634052d6dd54ad6"
+deps = ["Aqua", "CategoricalArrays", "DataFrames", "Lasso", "LinearAlgebra", "Statistics", "StatsAPI", "StatsBase"]
+git-tree-sha1 = "ce958766aabe14103380f533cadaa371e72e2d2e"
 repo-rev = "main"
 repo-url = "/home/kshedden/Projects/julia/Earth.jl"
 uuid = "ae24ea40-bf11-4146-8ed5-41e60b83d222"
