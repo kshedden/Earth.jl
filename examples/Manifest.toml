@@ -130,6 +130,10 @@ version = "1.0.0"
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
+[[deps.Distributed]]
+deps = ["Random", "Serialization", "Sockets"]
+uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+
 [[deps.Distributions]]
 deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsAPI", "StatsBase", "StatsFuns", "Test"]
 git-tree-sha1 = "3d5873f811f582873bb9871fc9c451784d5dc8c7"
@@ -162,8 +166,8 @@ uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
 version = "0.6.8"
 
 [[deps.Earth]]
-deps = ["Aqua", "CategoricalArrays", "DataFrames", "Lasso", "LinearAlgebra", "Statistics", "StatsAPI", "StatsBase"]
-git-tree-sha1 = "6bee3bde522bec15f3d1a0b90e2aac22ef6b5795"
+deps = ["Aqua", "CategoricalArrays", "DataFrames", "Lasso", "LinearAlgebra", "ProgressMeter", "Statistics", "StatsAPI", "StatsBase"]
+git-tree-sha1 = "ad2065e1881734051405ce080d333970093d0764"
 repo-rev = "main"
 repo-url = "/home/kshedden/Projects/julia/Earth.jl"
 uuid = "ae24ea40-bf11-4146-8ed5-41e60b83d222"
@@ -452,6 +456,12 @@ version = "2.2.7"
 [[deps.Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[deps.ProgressMeter]]
+deps = ["Distributed", "Printf"]
+git-tree-sha1 = "00099623ffee15972c16111bcf84c58a0051257c"
+uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
+version = "1.9.0"
 
 [[deps.QuadGK]]
 deps = ["DataStructures", "LinearAlgebra"]
