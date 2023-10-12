@@ -1,6 +1,9 @@
 using Statistics
+using StatsBase
+using CategoricalArrays
 using LinearAlgebra
 using Lasso
+using DataFrames
 
 # A hinge function for the variable in position 'var' of the parent
 # data matrix.  The hinge is located at 'cut'.  If 'dir' == true, the
@@ -67,6 +70,9 @@ mutable struct EarthModel
 
     # The response
     y::Vector{Float64}
+
+    # Variable names
+    vnames::Vector{String}
 end
 
 function response(E::EarthModel)
@@ -79,6 +85,10 @@ end
 
 function predict(E::EarthModel)
     return response(E) - residuals(E)
+end
+
+function coefnames(E::EarthModel)
+    return E.vnames
 end
 
 function predict(E::EarthModel, X::AbstractMatrix)
@@ -124,20 +134,40 @@ function gr2(E::EarthModel)
     return 1 .- g / g[1]
 end
 
-# Return a vector containing knots for the values in `x`.  The knots
-# lie on quantiles of `x` corresponding to equi-spaced probability
-# points.
-function get_knots(x::AbstractVector{<:Real}, knots::Int)
-    pp = range(0, 1, knots)
+# Return a vector containing `n_knots` knots for the values in `x`.
+# If `x` has no more than `n_knots` distinct values, these distinct
+# values are the knots.  Otherwise the knots lie on quantiles of `x`
+# corresponding to `n_knots` equi-spaced probability points.
+function get_knots(x::AbstractVector{<:Real}, n_knots::Int)
+
+    u = unique(x)
+    sort!(u)
+    if length(u) <= n_knots
+        return u
+    end
+    pp = range(0, 1, n_knots)
     return Float64[quantile(x, p) for p in pp]
 end
 
 # Constructor
-function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots; constraints=Set{Vector{Bool}}(),
+function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
+                    vnames::Vector{<:AbstractString}=[], constraints=Set{Vector{Bool}}(),
                     maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2))
     n, p = size(X)
     if length(y) != n
         throw(ArgumentError("The length of y must match the leading dimension of X."))
+    end
+
+    if length(vnames) == 0
+        vnames = ["v$(j)" for j in 1:size(X,2)]
+    end
+
+    if length(vnames) != size(X, 2)
+        error("Length of `vnames` is incompatible with size of `X`")
+    end
+
+    if length(knots) != size(X, 2)
+        error("size of `knots` is incompatible with size of `X`")
     end
 
     # Always start with an intercept
@@ -160,7 +190,58 @@ function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
     nterms = Int[1]
 
     return EarthModel(MarsTerm[term], D, U, resid, constraints, K, [],
-                      maxorder, rss, edof, nterms, knot_penalty, X, y)
+                      maxorder, rss, edof, nterms, knot_penalty, X, y, vnames)
+end
+
+function _handle_covars(X)
+
+    # Get variable names (creating generic names if needed) and
+    # a sequence of data columns.
+    nams, cols = if typeof(X) <: AbstractMatrix
+        na = ["v$(j)" for j in 1:size(X, 2)]
+        return na, Float64.(X)
+    elseif typeof(X) <: DataFrame
+        names(X), eachcol(X)
+    elseif typeof(X) <: NamedTuple
+        String.([keys(X)...]), values(X)
+    elseif typeof(X) <: Tuple || typeof(X) <: AbstractVector
+        ["v$(j)" for j in 1:length(X)], X
+    else
+        error("Invalid type $(typeof(X)) for covariates `X`")
+    end
+
+    if length(cols) == 0
+        error("No covariates")
+    end
+
+    nams = Vector{Any}(nams)
+    A = []
+    n = length(first(cols))
+    for (j,c) in enumerate(cols)
+        if length(c) != n
+            error("Variables 1 and $(j) have different lengths ($(n) and $(length(c))")
+        end
+        a = nams[j]
+        if eltype(c) <: Real
+            push!(A, Float64.(c))
+        elseif eltype(c) <: AbstractString
+            m = indicatormat(c)'
+            levels = sort(unique(c))
+            nams[j] = ["$(a)$(x)" for x in levels]
+            push!(A, indicatormat(c)')
+        elseif eltype(c) <: CategoricalArray
+            levels = sort(unique(c))
+            nams[j] = ["$(a)$(x)" for x in levels]
+            push!(a, (levels .== c)')
+        else
+            error("Unknown type `$(eltype(c))` for covariate $(j)")
+        end
+    end
+
+    # Flatten the names vector
+    nams = reduce(vcat, nams)
+
+    return nams, hcat(A...)
 end
 
 """
@@ -169,14 +250,18 @@ end
 
 Fit a regression model using an approach similar to Friedman's 1991
 MARS procedure (also known as Earth for trademark reasons).  The
-design matrix `X` is a design matrix of covariates (do not include an
-intercept as this is included automatically), and the vector `y`
-contains the response values.
+covariates are in `X` and the vector `y` contains the response values.
 
 Earth/MARS involves two steps: a greedy basis construction followed by
 pruning step that aims to eliminate irrelevant terms.  The basis
 functions are products of hinge functions.  This implementation uses
 the Lasso instead of back-selection to prune the model.
+
+The covariates `X` can be a numeric Matrix, a vector or tuple of vectors,
+or a named tuple whose values are vectors.  In the latter two cases, each
+covariate vector must be of numeric or string type, or be an instance of
+CategoricalArray. The latter-two types are expanded into binary indicator
+vectors.
 
 # Keyword arguments
 
@@ -197,11 +282,14 @@ https://projecteuclid.org/journals/annals-of-statistics/volume-19/issue-1/Multiv
 function fit(::Type{EarthModel}, X, y; knots=20, maxit=10, constraints=Set{Vector{Bool}}(),
              prune=true, verbose=false, maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2))
 
+    vnames, X = _handle_covars(X)
+
     if typeof(knots) <: Number
         knots = knots * ones(Int, size(X, 2))
     end
 
-    E = EarthModel(X, y, knots; constraints=constraints, knot_penalty=knot_penalty, maxorder=2)
+    E = EarthModel(X, y, knots; vnames=vnames, constraints=constraints,
+                   knot_penalty=knot_penalty, maxorder=2)
     fit!(E; maxit=maxit, prune=prune, verbose=verbose)
     return E
 end

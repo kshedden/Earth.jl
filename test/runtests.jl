@@ -2,6 +2,7 @@ using Test
 using Earth
 using StableRNGs
 using Statistics
+using DataFrames
 using LinearAlgebra
 
 @testset "Hinges" begin
@@ -117,5 +118,24 @@ end
         yhat1 = predict(m)
         yhat2 = predict(m, X)
         @test isapprox(yhat1, yhat2)
+    end
+end
+
+@testset "Categorical" begin
+
+    rng = StableRNG(123)
+
+    n = 1000
+    X = [randn(rng, n), rand(rng, ["a", "b"], n), rand(rng, ["x", "y", "z"], n)]
+    y = X[1] + X[1] .* (X[2] .== "b") + (X[2] .== "a") .* (X[3] .== "z") + randn(rng, n)
+
+    Xvec = X
+    Xtup = tuple(X...)
+    Xnt = (x1=X[1], x2=X[2], x3=X[3])
+    Xdf = DataFrame(X, :auto)
+
+    for X in [Xvec, Xtup, Xnt, Xdf]
+        m = fit(EarthModel, X, y; maxit=5)
+        @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
     end
 end

@@ -2,7 +2,7 @@
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "36cdd1f602d01927e7d99edaaecf4572fb7dff67"
+project_hash = "350dffa86af77ae10694fa7d66fcb7ae9e497a07"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -17,12 +17,6 @@ version = "1.5.0"
     [deps.AbstractFFTs.weakdeps]
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
     Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[[deps.Aqua]]
-deps = ["Compat", "Pkg", "Test"]
-git-tree-sha1 = "26c25461f946ef74512b3d6fd115d732912ba74a"
-uuid = "4c88cf16-eb10-579e-8560-4a9242c79595"
-version = "0.7.3"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -72,6 +66,12 @@ weakdeps = ["Dates", "LinearAlgebra"]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "1.0.5+0"
+
+[[deps.Conda]]
+deps = ["Downloads", "JSON", "VersionParsing"]
+git-tree-sha1 = "8c86e48c0db1564a1d49548d3515ced5d604c408"
+uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
+version = "1.9.1"
 
 [[deps.ConstructionBase]]
 deps = ["LinearAlgebra"]
@@ -154,6 +154,14 @@ deps = ["Calculus", "NaNMath", "SpecialFunctions"]
 git-tree-sha1 = "5837a837389fccf076445fce071c8ddaea35a566"
 uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
 version = "0.6.8"
+
+[[deps.Earth]]
+deps = ["Lasso", "LinearAlgebra", "Statistics", "StatsAPI", "StatsBase"]
+git-tree-sha1 = "26c4ac1e01c02282d258b73d7634052d6dd54ad6"
+repo-rev = "main"
+repo-url = "/home/kshedden/Projects/julia/Earth.jl"
+uuid = "ae24ea40-bf11-4146-8ed5-41e60b83d222"
+version = "0.1.0"
 
 [[deps.FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "LinearAlgebra", "MKL_jll", "Preferences", "Reexport"]
@@ -238,6 +246,12 @@ deps = ["Artifacts", "Preferences"]
 git-tree-sha1 = "7e5d6779a1e09a36db2a7b6cff50942a0a7d0fca"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
 version = "1.5.0"
+
+[[deps.JSON]]
+deps = ["Dates", "Mmap", "Parsers", "Unicode"]
+git-tree-sha1 = "31e996f0a15c7b280ba9f76636b3ff9e2ae58c9a"
+uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+version = "0.21.4"
 
 [[deps.LaTeXStrings]]
 git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
@@ -331,6 +345,9 @@ deps = ["DataAPI"]
 git-tree-sha1 = "f66bdc5de519e8f8ae43bdc598782d35a25b1272"
 uuid = "e1d29d7a-bbdc-5cf2-9ac0-f12de2c33e28"
 version = "1.1.0"
+
+[[deps.Mmap]]
+uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
@@ -435,6 +452,12 @@ deps = ["DataStructures", "LinearAlgebra"]
 git-tree-sha1 = "9ebcd48c498668c7fa0e97a9cae873fbee7bfee1"
 uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 version = "2.9.1"
+
+[[deps.RCall]]
+deps = ["CategoricalArrays", "Conda", "DataFrames", "DataStructures", "Dates", "Libdl", "Missings", "REPL", "Random", "Requires", "StatsModels", "WinReg"]
+git-tree-sha1 = "3084689b18f9e5e817a6ce9a83a7654d8ad0f2f6"
+uuid = "6f49c342-dc21-5d91-9882-a32aef131414"
+version = "0.13.18"
 
 [[deps.REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
@@ -611,6 +634,16 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+
+[[deps.VersionParsing]]
+git-tree-sha1 = "58d6e80b4ee071f5efd07fda82cb9fbe17200868"
+uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
+version = "1.3.0"
+
+[[deps.WinReg]]
+git-tree-sha1 = "cd910906b099402bcc50b3eafa9634244e5ec83b"
+uuid = "1b915085-20d7-51cf-bf83-8f477d6f5128"
+version = "1.0.0"
 
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
