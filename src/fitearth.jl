@@ -232,7 +232,7 @@ function _handle_covars(X)
         elseif eltype(c) <: CategoricalValue
             levels = sort(unique(c))
             nams[j] = ["$(a)$(x)" for x in levels]
-            push!(a, (levels .== c)')
+            push!(a, (levels .== permutedims(c))')
         else
             error("Unknown type `$(eltype(c))` for covariate $(j)")
         end
