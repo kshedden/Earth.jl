@@ -227,12 +227,12 @@ function _handle_covars(X)
         elseif eltype(c) <: AbstractString
             m = indicatormat(c)'
             levels = sort(unique(c))
-            nams[j] = ["$(a)$(x)" for x in levels]
+            nams[j] = ["$(a)::$(x)" for x in levels]
             push!(A, indicatormat(c)')
         elseif eltype(c) <: CategoricalValue
             levels = sort(unique(c))
-            nams[j] = ["$(a)$(x)" for x in levels]
-            push!(a, (levels .== permutedims(c))')
+            nams[j] = ["$(a)::$(x)" for x in levels]
+            push!(A, (levels .== permutedims(c))')
         else
             error("Unknown type `$(eltype(c))` for covariate $(j)")
         end

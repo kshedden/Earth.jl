@@ -1,9 +1,10 @@
-using Test
+using CategoricalArrays
+using DataFrames
 using Earth
+using LinearAlgebra
 using StableRNGs
 using Statistics
-using DataFrames
-using LinearAlgebra
+using Test
 
 @testset "Hinges" begin
 
@@ -126,7 +127,7 @@ end
     rng = StableRNG(123)
 
     n = 1000
-    X = [randn(rng, n), rand(rng, ["a", "b"], n), rand(rng, ["x", "y", "z"], n)]
+    X = [randn(rng, n), rand(rng, ["a", "b"], n), CategoricalArray(rand(rng, ["x", "y", "z"], n))]
     y = X[1] + X[1] .* (X[2] .== "b") + (X[2] .== "a") .* (X[3] .== "z") + randn(rng, n)
 
     Xvec = X
