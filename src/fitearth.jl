@@ -1,7 +1,8 @@
 using CategoricalArrays
+using DataFrames
 using Lasso
 using LinearAlgebra
-using DataFrames
+using Printf
 using ProgressMeter
 using Statistics
 using StatsBase
@@ -15,8 +16,8 @@ struct Hinge
     dir::Bool
 end
 
-# A MarsTerm is a product of hinge functions.
-struct MarsTerm
+# A EarthTerm is a product of hinge functions.
+struct EarthTerm
 
     # The hinge functions whose product forms this MARS term.
     hinges::Vector{Hinge}
@@ -29,7 +30,7 @@ end
 mutable struct EarthModel
 
     # All terms in the model
-    Terms::Vector{MarsTerm}
+    Terms::Vector{EarthTerm}
 
     # The basis vectors, D[1] is always the intercept
     D::Vector{Vector{Float64}}
@@ -186,7 +187,7 @@ function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
     # Always start with an intercept
     icept = Hinge(-1, 0, true)
     vmask = zeros(Bool, p)
-    term = MarsTerm(Hinge[icept,], vmask)
+    term = EarthTerm(Hinge[icept,], vmask)
 
     # Fitted values based on the intercept-only model
     yhat = mean(y) * ones(n)
@@ -202,7 +203,7 @@ function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
     rss = Float64[sum(abs2, resid)]
     nterms = Int[1]
 
-    return EarthModel(MarsTerm[term], D, U, resid, constraints, K, [],
+    return EarthModel(EarthTerm[term], D, U, resid, constraints, K, [],
                       maxorder, rss, edof, nterms, knot_penalty, X, y, vnames, levels)
 end
 
@@ -593,5 +594,36 @@ function update!(h::Hinge, X::AbstractMatrix, z::AbstractVector)
         else
             z[i] *= max(0.0, h.cut - X[i, h.var])
         end
+    end
+end
+
+function Base.show(io::IO, h::Hinge; vnames=String[])
+    if h.var == -1
+        print(io, "intercept")
+        return
+    end
+    sym = h.dir ? ">" : "<"
+    vname = if length(vnames) > 0
+        vnames[h.var]
+    else
+        "v$(string(h.var))"
+    end
+    print(io, @sprintf("%s %s %.3f", vname, sym, h.cut))
+end
+
+function Base.show(io::IO, t::EarthTerm; vnames=String[])
+    for (j,h) in enumerate(t.hinges)
+        show(io, h; vnames=vnames)
+        if j < length(t.hinges)
+            print(io, " & ")
+        end
+    end
+end
+
+function Base.show(io::IO, E::EarthModel)
+    (; Terms, vnames) = E
+    for trm in Terms
+        show(io, trm; vnames=vnames)
+        print(io, "\n")
     end
 end

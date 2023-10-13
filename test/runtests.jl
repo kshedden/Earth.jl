@@ -9,7 +9,7 @@ using Test
 @testset "Hinges" begin
 
     n = 3
-    X = [1. 1 -1; 2 2 -2; 3 4 -3]
+    X = [1. 1 -1; 2 2 -2; 3 5 -3]
     y = [1., 2, 3]
 
     h1 = Earth.Hinge(1, 0, true)
@@ -19,15 +19,22 @@ using Test
     Earth.update!(h1, X, z)
     @test isapprox(z, [1., 4, 9])
 
-    h2 = Earth.Hinge(2, 0, true)
+    h2 = Earth.Hinge(2, 1, true)
     Earth.update!(h2, X, z)
-    @test isapprox(z, [1., 8, 36])
+    @test isapprox(z, [0., 4, 36])
 
-    h3 = Earth.Hinge(3, 0, false)
+    h3 = Earth.Hinge(3, -2, false)
     Earth.update!(h3, X, z)
-    @test isapprox(z, [1., 16, 108])
+    @test isapprox(z, [0., 0, 36])
     Earth.update!(h3, X, z)
-    @test isapprox(z, [1., 32, 324])
+    @test isapprox(z, [0., 0, 36])
+
+    io = IOBuffer()
+    print(io, h1)
+    print(io, h2)
+    print(io, h3)
+    s = String(take!(io))
+    @test s == "v1 > 0.000v2 > 1.000v3 < -2.000"
 end
 
 @testset "Basic no prune" begin
@@ -60,6 +67,8 @@ end
     @test isapprox(sum(svd(XX'*D1).S), 3, rtol=0.01, atol=0.01)
 
     @test Earth.checkstate(m)
+
+    println(m)
 end
 
 @testset "Basic prune" begin
