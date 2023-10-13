@@ -317,9 +317,11 @@ end
 function fit!(E::EarthModel; maxit=10, prune=true, verbose=verbose)
 
     # Basis construction
-    pr = Progress(maxit; desc="Building basis...", enabled=verbose)
+    pr = Progress(maxit^2/2; desc="Building basis...", enabled=verbose)
+    kp = 0
     for k in 1:maxit
-        verbose && next!(pr)
+        kp += k
+        verbose && update!(pr, kp)
         nextterm!(E)
     end
     verbose && finish!(pr)
@@ -623,8 +625,9 @@ function Base.show(io::IO, t::EarthTerm; vnames=String[])
 end
 
 function Base.show(io::IO, E::EarthModel)
-    (; Terms, vnames) = E
-    for trm in Terms
+    (; Terms, vnames, coef) = E
+    for (j, trm) in enumerate(Terms)
+        print(io, @sprintf("%10.3f  ", coef[j]))
         show(io, trm; vnames=vnames)
         print(io, "\n")
     end

@@ -2,5 +2,7 @@
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Earth = "ae24ea40-bf11-4146-8ed5-41e60b83d222"
+Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 RCall = "6f49c342-dc21-5d91-9882-a32aef131414"
 ReadStatTables = "52522f7a-9570-4e34-8ac6-c005c74d4b84"

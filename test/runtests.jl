@@ -150,6 +150,7 @@ end
         m = fit(EarthModel, X, y; maxit=5)
         io = IOBuffer()
         println(io, m)
+        println(m)
         @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
     end
 end
