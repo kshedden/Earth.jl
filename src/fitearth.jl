@@ -76,8 +76,10 @@ mutable struct EarthModel
     # Variable names
     vnames::Vector{String}
 
-    # The levels of categorical variables
-    levels::Vector{Vector{String}}
+    # The levels of categorical variables.  The elements of levels are
+    # vectors containing the unique levels of each categorical variable,
+    # or the empty vector [] if a variable is not categorical.
+    levels::Vector
 end
 
 function response(E::EarthModel)
@@ -166,7 +168,7 @@ end
 # Constructor
 function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
                     vnames::Vector{<:AbstractString}=[], constraints=Set{Vector{Bool}}(),
-                    maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2), levels::Vector{Vector{String}}=[])
+                    maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2), levels::Vector=[])
     n, p = size(X)
     if length(y) != n
         throw(ArgumentError("The length of y must match the leading dimension of X."))
@@ -224,7 +226,7 @@ function handle_covars(X)
         error("Invalid type $(typeof(X)) for covariates `X`")
     end
 
-    levs = [typeof(c) <: CategoricalArray ? levels(c) : String[] for c in cols]
+    levs = [typeof(c) <: CategoricalArray ? levels(c) : [] for c in cols]
 
     if length(cols) == 0
         error("No covariates")

@@ -68,7 +68,8 @@ end
 
     @test Earth.checkstate(m)
 
-    println(m)
+    io = IOBuffer()
+    println(io, m)
 end
 
 @testset "Basic prune" begin
@@ -137,8 +138,8 @@ end
 
     n = 1000
     X = [randn(rng, n), CategoricalArray(rand(rng, ["a", "b"], n)),
-         CategoricalArray(rand(rng, ["x", "y", "z"], n))]
-    y = X[1] + X[1] .* (X[2] .== "b") + (X[2] .== "a") .* (X[3] .== "z") + randn(rng, n)
+         CategoricalArray(rand(rng, [1, 2, 3], n))]
+    y = X[1] + X[1] .* (X[2] .== "b") + (X[2] .== "a") .* (X[3] .== 3) + randn(rng, n)
 
     Xvec = X
     Xtup = tuple(X...)
@@ -147,6 +148,8 @@ end
 
     for X in [Xvec, Xtup, Xnt, Xdf]
         m = fit(EarthModel, X, y; maxit=5)
+        io = IOBuffer()
+        println(io, m)
         @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
     end
 end
