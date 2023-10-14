@@ -56,21 +56,35 @@ end
 
 # To use categorical variables in Earth they must be
 # explicitly typed as CategoricalArray.
+
 da[!, :RIDRETH1] = CategoricalArray(da[:, :RIDRETH1])
 da[!, :RIAGENDR] = CategoricalArray(da[:, :RIAGENDR])
 
 # The response variable
+
 y = da[:, :BPXSY1]
 
 # The covariates
+
 X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR], RIDRETH1=da[:, :RIDRETH1])
 
 # Fit an additive model, limiting the order of each
 # term to 1.
+
 m1 = fit(EarthModel, X, y; verbose=true, maxorder=1)
 
+# Here is the structure of the fitted model
+
+m1
+
 # Allow nonlinear main effects and two-way interactions.
+
 m2 = fit(EarthModel, X, y; verbose=true, maxorder=2)
+
+m2
+
+# The function below generates the fitted mean blood pressure
+# at fixed levels of sex, BMI, and race.
 
 function sbp_by_age(m; sex="Female", bmi=25, eth="NHB")
     dp = da[1:100, [:RIDAGEYR, :BMXBMI, :RIAGENDR, :RIDRETH1]]
@@ -80,8 +94,11 @@ function sbp_by_age(m; sex="Female", bmi=25, eth="NHB")
     dp[:, :RIDRETH1] .= eth
     yh = predict(m, dp)
     return dp[:, :RIDAGEYR], yh
-    lines!(ax, dp[:, :RIDAGEYR], yh)
 end
+
+# The plot below shows the estimated conditional mean blood
+# pressure values for non-hispanic black females, at three
+# levels of BMI.
 
 age, sbp = sbp_by_age(m1; bmi=25)
 p = plot(age, sbp, xlabel="Age", ylabel="SBP", label="BMI=25")
@@ -90,3 +107,5 @@ plot!(p, age, sbp, label="BMI=30")
 age, sbp = sbp_by_age(m1; bmi=35)
 plot!(p, age, sbp, label="BMI=35")
 Plots.savefig(p, "./assets/nhanes1.svg")
+
+# ![Example plot 2](assets/nhanes1.svg)
