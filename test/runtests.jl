@@ -80,7 +80,7 @@ end
     X = randn(rng, n, 3)
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
-    m = fit(EarthModel, X, y; maxit=3, knots=20, prune=true)
+    m = fit(EarthModel, X, y; maxit=3, knots=20, prune=true, verbose=true)
     @test isapprox(mean(m.resid.^2), 1, atol=0.01, rtol=0.02)
 
     # Check that D spans the intended subspace

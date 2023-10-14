@@ -3,7 +3,7 @@ using DataFrames
 using Lasso
 using LinearAlgebra
 using Printf
-using ProgressMeter
+import ProgressMeter
 using Statistics
 using StatsBase
 
@@ -328,25 +328,25 @@ end
 function fit!(E::EarthModel; maxit=10, prune=true, verbose=verbose)
 
     # Basis construction
-    pr = Progress(Int(floor(maxit^2/2)); desc="Building basis...", enabled=verbose)
+    pr = ProgressMeter.Progress(Int(floor(maxit^2/2)); desc="Building basis...", enabled=verbose)
     kp = 0
     for k in 1:maxit
         kp += k
-        verbose && update!(pr, kp)
+        verbose && ProgressMeter.update!(pr, kp)
         nextterm!(E)
     end
-    verbose && finish!(pr)
+    verbose && ProgressMeter.finish!(pr)
 
     # Pruning
-    pr = Progress(maxit; desc="Pruning...", enabled=verbose)
+    pr = ProgressMeter.Progress(maxit; desc="Pruning...", enabled=verbose)
     if prune
-        verbose && next!(pr)
+        verbose && ProgressMeter.next!(pr)
         prune!(E)
     else
         D = hcat(E.D...)
         E.coef = qr(D) \ E.y
     end
-    verbose && finish!(pr)
+    verbose && ProgressMeter.finish!(pr)
 end
 
 # Replace z with its projection onto the orthogonal complement of the
