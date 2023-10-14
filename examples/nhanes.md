@@ -85,13 +85,13 @@ da[!, :RIDRETH1] = CategoricalArray(da[:, :RIDRETH1]);
 da[!, :RIAGENDR] = CategoricalArray(da[:, :RIAGENDR]);
 ````
 
-The response variable as a float vector:
+Define the response variable as a float vector:
 
 ````julia
 y = da[:, :BPXSY1];
 ````
 
-The covariates as a named tuple:
+Construct the covariates as a named tuple:
 
 ````julia
 X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR], RIDRETH1=da[:, :RIDRETH1]);
@@ -105,21 +105,22 @@ m1 = fit(EarthModel, X, y; verbose=true, maxorder=1)
 ````
 
 ````
-intercept
-intercept & RIDAGEYR > 34.000
-intercept & RIDAGEYR < 34.000
-intercept & BMXBMI > 33.042
-intercept & BMXBMI < 33.042
-intercept & RIDAGEYR > 34.000 & RIDRETH1::NHW > 0.000
-intercept & BMXBMI < 33.042 & RIDAGEYR > 41.000
-intercept & BMXBMI < 33.042 & RIDAGEYR < 41.000
-intercept & RIDRETH1::NHB > 0.000
-intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474
-intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR < 55.474
-intercept & RIDAGEYR > 34.000 & RIAGENDR::Female > 0.000
-intercept & RIAGENDR::Female < 1.000
-intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474 & RIDAGEYR > 59.000
-intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474 & RIDAGEYR < 59.000
+   118.164  intercept
+     0.320  intercept & RIDAGEYR > 34.000
+    -0.233  intercept & RIDAGEYR < 34.000
+     0.574  intercept & BMXBMI > 33.042
+    -0.239  intercept & BMXBMI < 33.042
+     3.592  intercept & RIDRETH1::NHB > 0.000
+    -3.106  intercept & RIDRETH1::NHW > 0.000
+    -2.573  intercept & RIAGENDR::Female > 0.000
+     0.007  intercept & RIDAGEYR > 34.000 & RIDAGEYR > 75.000
+     0.494  intercept & RIDAGEYR > 55.474
+     0.001  intercept & RIDAGEYR > 34.000 & RIDAGEYR < 75.000 & RIDAGEYR > 49.000
+     0.001  intercept & RIDAGEYR > 34.000 & RIDAGEYR < 75.000 & RIDAGEYR < 49.000
+    -0.000  intercept & RIDAGEYR > 34.000 & RIDAGEYR < 75.000 & RIDAGEYR > 49.000 & RIDAGEYR > 61.000
+     0.000  intercept & RIDAGEYR > 34.000 & RIDAGEYR < 75.000 & RIDAGEYR > 49.000 & RIDAGEYR < 61.000
+    -0.008  intercept & BMXBMI > 33.042 & BMXBMI > 34.500
+    -4.574  intercept & BMXBMI > 33.042 & BMXBMI < 34.500
 
 ````
 
@@ -130,21 +131,21 @@ m2 = fit(EarthModel, X, y; verbose=true, maxorder=2)
 ````
 
 ````
-intercept
-intercept & RIDAGEYR > 34.000
-intercept & RIDAGEYR < 34.000
-intercept & BMXBMI > 33.042
-intercept & BMXBMI < 33.042
-intercept & RIDAGEYR > 34.000 & RIDRETH1::NHW > 0.000
-intercept & BMXBMI < 33.042 & RIDAGEYR > 41.000
-intercept & BMXBMI < 33.042 & RIDAGEYR < 41.000
-intercept & RIDRETH1::NHB > 0.000
-intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474
-intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR < 55.474
-intercept & RIDAGEYR > 34.000 & RIAGENDR::Female > 0.000
-intercept & RIAGENDR::Female < 1.000
-intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474 & RIDAGEYR > 59.000
-intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474 & RIDAGEYR < 59.000
+   114.232  intercept
+     0.320  intercept & RIDAGEYR > 34.000
+    -0.340  intercept & RIDAGEYR < 34.000
+     0.395  intercept & BMXBMI > 33.042
+    -0.892  intercept & BMXBMI < 33.042
+    -0.167  intercept & RIDAGEYR > 34.000 & RIDRETH1::NHW > 0.000
+     0.045  intercept & BMXBMI < 33.042 & RIDAGEYR > 41.000
+     0.026  intercept & BMXBMI < 33.042 & RIDAGEYR < 41.000
+     6.384  intercept & RIDRETH1::NHB > 0.000
+    -0.499  intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474
+    -0.127  intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR < 55.474
+     0.352  intercept & RIDAGEYR > 34.000 & RIAGENDR::Female > 0.000
+     8.699  intercept & RIAGENDR::Female < 1.000
+     0.011  intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474 & RIDAGEYR > 59.000
+     2.302  intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474 & RIDAGEYR < 59.000
 
 ````
 
