@@ -27,6 +27,12 @@ struct EarthTerm
     vmask::Vector{Bool}
 end
 
+# Returns the order of a term, which is the number of distinct variables
+# in the term.
+function order(T::EarthTerm)
+    return sum(T.vmask)
+end
+
 mutable struct EarthModel
 
     # All terms in the model
@@ -80,6 +86,11 @@ mutable struct EarthModel
     # vectors containing the unique levels of each categorical variable,
     # or the empty vector [] if a variable is not categorical.
     levels::Vector
+end
+
+# Returns the orders of all terms in the model.
+function order(E::EarthModel)
+    return order.(E.Terms)
 end
 
 function response(E::EarthModel)

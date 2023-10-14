@@ -116,6 +116,20 @@ end
     @test isapprox(sum(svd(XX'*D1).S), 3, rtol=0.01, atol=0.01)
 end
 
+@testset "Check maxorder" begin
+
+    rng = StableRNG(123)
+
+    n = 1000
+    X = randn(rng, n, 3)
+    y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
+
+    m1 = fit(EarthModel, X, y; maxorder=1)
+    m2 = fit(EarthModel, X, y; maxorder=2)
+    @test maximum(Earth.order(m1)) == 1
+    @test maximum(Earth.order(m2)) == 2
+end
+
 @testset "Predict" begin
 
     rng = StableRNG(123)
@@ -150,7 +164,6 @@ end
         m = fit(EarthModel, X, y; maxit=5)
         io = IOBuffer()
         println(io, m)
-        println(m)
         @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
     end
 end
