@@ -8,6 +8,9 @@ Here we demonstrate EARTH by building regression models
 to study the variation in systolic blood pressure (SBP)
 in terms of age, BMI, sex, and ethnicity.
 
+See the [NHANES website](https://wwwn.cdc.gov/nchs/nhanes) for more
+information about these data.
+
 ````julia
 using CategoricalArrays
 using CSV
@@ -24,7 +27,7 @@ dfile = "assets/nhanes2017.csv.gz"
 "assets/nhanes2017.csv.gz"
 ````
 
-Download and merge the data sets
+The function below downloads and merges the data sets.
 
 ````julia
 function get_data()
@@ -60,10 +63,15 @@ function get_data()
 end;
 ````
 
-Get the data only if it is not already present
+Download the data only if it is not already present
 
 ````julia
-isfile(dfile) || get_data()
+isfile(dfile) || get_data();
+````
+
+Read the data into a data frame.
+
+````julia
 da = open(dfile) do io
     CSV.read(io, DataFrame)
 end;
@@ -77,13 +85,13 @@ da[!, :RIDRETH1] = CategoricalArray(da[:, :RIDRETH1]);
 da[!, :RIAGENDR] = CategoricalArray(da[:, :RIAGENDR]);
 ````
 
-The response variable
+The response variable as a float vector:
 
 ````julia
 y = da[:, :BPXSY1];
 ````
 
-The covariates
+The covariates as a named tuple:
 
 ````julia
 X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR], RIDRETH1=da[:, :RIDRETH1]);
@@ -140,6 +148,20 @@ intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474 & RIDAGEYR < 59.000
 
 ````
 
+Get the adjusted r-squared sequences for each model.
+
+````julia
+r2_1 = gr2(m1)
+r2_2 = gr2(m2)
+
+m = length(r2_1)
+p = plot(1:m, r2_1, xlabel="Number of terms", ylabel="R2", label="1")
+plot!(p, 1:m, r2_1, label="2")
+Plots.savefig(p, "./assets/nhanes1.svg");
+````
+
+![R-squares](assets/nhanes1.svg)
+
 The function below generates the fitted mean blood pressure
 at fixed levels of sex, BMI, and race.
 
@@ -152,11 +174,7 @@ function sbp_by_age(m; sex="Female", bmi=25, eth="NHB")
     dp[:, :RIDRETH1] .= eth
     yh = predict(m, dp)
     return dp[:, :RIDAGEYR], yh
-end
-````
-
-````
-sbp_by_age (generic function with 1 method)
+end;
 ````
 
 The plot below shows the estimated conditional mean blood
@@ -170,14 +188,22 @@ age, sbp = sbp_by_age(m1; bmi=30)
 plot!(p, age, sbp, label="BMI=30")
 age, sbp = sbp_by_age(m1; bmi=35)
 plot!(p, age, sbp, label="BMI=35")
-Plots.savefig(p, "./assets/nhanes1.svg")
+Plots.savefig(p, "./assets/nhanes2.svg");
 ````
 
-````
-"/home/kshedden/Projects/julia/Earth.jl/examples/assets/nhanes1.svg"
+![Fitted means](assets/nhanes2.svg)
+
+````julia
+age, sbp = sbp_by_age(m2; bmi=25)
+p = plot(age, sbp, xlabel="Age", ylabel="SBP", label="BMI=25")
+age, sbp = sbp_by_age(m2; bmi=30)
+plot!(p, age, sbp, label="BMI=30")
+age, sbp = sbp_by_age(m2; bmi=35)
+plot!(p, age, sbp, label="BMI=35")
+Plots.savefig(p, "./assets/nhanes3.svg");
 ````
 
-![Example plot 2](assets/nhanes1.svg)
+![Fitted means](assets/nhanes3.svg)
 
 ---
 
