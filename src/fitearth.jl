@@ -309,7 +309,7 @@ function fit(::Type{EarthModel}, X, y; knots=20, maxit=10, constraints=Set{Vecto
     end
 
     E = EarthModel(X, y, knots; vnames=vnames, constraints=constraints,
-                   knot_penalty=knot_penalty, maxorder=2, levels=levs)
+                   knot_penalty=knot_penalty, maxorder=maxorder, levels=levs)
     fit!(E; maxit=maxit, prune=prune, verbose=verbose)
     return E
 end
@@ -317,7 +317,7 @@ end
 function fit!(E::EarthModel; maxit=10, prune=true, verbose=verbose)
 
     # Basis construction
-    pr = Progress(maxit^2/2; desc="Building basis...", enabled=verbose)
+    pr = Progress(Int(floor(maxit^2/2)); desc="Building basis...", enabled=verbose)
     kp = 0
     for k in 1:maxit
         kp += k

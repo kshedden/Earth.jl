@@ -4,6 +4,9 @@
 # to study the variation in systolic blood pressure (SBP)
 # in terms of age, BMI, sex, and ethnicity.
 
+# See the [NHANES website](https://wwwn.cdc.gov/nchs/nhanes) for more
+# information about these data.
+
 ENV["GKSwstype"] = "nul" #hide
 using CategoricalArrays
 using CSV
@@ -15,7 +18,8 @@ using ReadStatTables
 
 dfile = "assets/nhanes2017.csv.gz"
 
-# Download and merge the data sets
+# The function below downloads and merges the data sets.
+
 function get_data()
 
     mkpath("assets")
@@ -46,42 +50,51 @@ function get_data()
     da = filter(r->r.RIDAGEYR >= 18, da)
 
     CSV.write(dfile, da; compress=true)
-end
+end;
 
-# Get the data only if it is not already present
-isfile(dfile) || get_data()
+# Download the data only if it is not already present
+isfile(dfile) || get_data();
+
+# Read the data into a data frame.
+
 da = open(dfile) do io
     CSV.read(io, DataFrame)
-end
+end;
 
 # To use categorical variables in Earth they must be
 # explicitly typed as CategoricalArray.
 
-da[!, :RIDRETH1] = CategoricalArray(da[:, :RIDRETH1])
-da[!, :RIAGENDR] = CategoricalArray(da[:, :RIAGENDR])
+da[!, :RIDRETH1] = CategoricalArray(da[:, :RIDRETH1]);
+da[!, :RIAGENDR] = CategoricalArray(da[:, :RIAGENDR]);
 
-# The response variable
+# Define the response variable as a float vector:
 
-y = da[:, :BPXSY1]
+y = da[:, :BPXSY1];
 
-# The covariates
+# Construct the covariates as a named tuple:
 
-X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR], RIDRETH1=da[:, :RIDRETH1])
+X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR], RIDRETH1=da[:, :RIDRETH1]);
 
 # Fit an additive model, limiting the order of each
 # term to 1.
 
 m1 = fit(EarthModel, X, y; verbose=true, maxorder=1)
 
-# Here is the structure of the fitted model
-
-m1
-
 # Allow nonlinear main effects and two-way interactions.
 
 m2 = fit(EarthModel, X, y; verbose=true, maxorder=2)
 
-m2
+# Get the adjusted r-squared sequences for each model.
+
+r2_1 = gr2(m1)
+r2_2 = gr2(m2)
+
+m = length(r2_1)
+p = plot(1:m, r2_1, xlabel="Number of terms", ylabel="R2", label="1")
+plot!(p, 1:m, r2_1, label="2")
+Plots.savefig(p, "./assets/nhanes1.svg");
+
+# ![R-squares](assets/nhanes1.svg)
 
 # The function below generates the fitted mean blood pressure
 # at fixed levels of sex, BMI, and race.
@@ -94,7 +107,7 @@ function sbp_by_age(m; sex="Female", bmi=25, eth="NHB")
     dp[:, :RIDRETH1] .= eth
     yh = predict(m, dp)
     return dp[:, :RIDAGEYR], yh
-end
+end;
 
 # The plot below shows the estimated conditional mean blood
 # pressure values for non-hispanic black females, at three
@@ -106,6 +119,16 @@ age, sbp = sbp_by_age(m1; bmi=30)
 plot!(p, age, sbp, label="BMI=30")
 age, sbp = sbp_by_age(m1; bmi=35)
 plot!(p, age, sbp, label="BMI=35")
-Plots.savefig(p, "./assets/nhanes1.svg")
+Plots.savefig(p, "./assets/nhanes2.svg");
 
-# ![Example plot 2](assets/nhanes1.svg)
+# ![Fitted means](assets/nhanes2.svg)
+
+age, sbp = sbp_by_age(m2; bmi=25)
+p = plot(age, sbp, xlabel="Age", ylabel="SBP", label="BMI=25")
+age, sbp = sbp_by_age(m2; bmi=30)
+plot!(p, age, sbp, label="BMI=30")
+age, sbp = sbp_by_age(m2; bmi=35)
+plot!(p, age, sbp, label="BMI=35")
+Plots.savefig(p, "./assets/nhanes3.svg");
+
+# ![Fitted means](assets/nhanes3.svg)
