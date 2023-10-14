@@ -78,7 +78,7 @@ X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR]
 # Fit an additive model, limiting the order of each
 # term to 1.
 
-m1 = fit(EarthModel, X, y; verbose=true, maxorder=2)
+m1 = fit(EarthModel, X, y; verbose=true, maxorder=1)
 
 # Allow nonlinear main effects and two-way interactions.
 

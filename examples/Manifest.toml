@@ -252,7 +252,7 @@ version = "0.6.8"
 
 [[deps.Earth]]
 deps = ["Aqua", "CategoricalArrays", "DataFrames", "Lasso", "LinearAlgebra", "Printf", "ProgressMeter", "Statistics", "StatsAPI", "StatsBase"]
-git-tree-sha1 = "4c33fc5eed007c50467ec319def0458e2fc3dbe9"
+git-tree-sha1 = "e9e1baf36137e901082c9b1c3e9c3bca4a96b9a1"
 repo-rev = "main"
 repo-url = "/home/kshedden/Projects/julia/Earth.jl"
 uuid = "ae24ea40-bf11-4146-8ed5-41e60b83d222"
