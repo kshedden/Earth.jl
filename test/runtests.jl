@@ -130,6 +130,20 @@ end
     @test maximum(Earth.order(m2)) == 2
 end
 
+@testset "Check maxdegree" begin
+
+    rng = StableRNG(123)
+
+    n = 1000
+    X = randn(rng, n, 3)
+    y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
+
+    m1 = fit(EarthModel, X, y; maxdegree=1)
+    m2 = fit(EarthModel, X, y; maxdegree=2)
+    @test maximum(Earth.degree(m1)) == 1
+    @test maximum(Earth.degree(m2)) == 2
+end
+
 @testset "Predict" begin
 
     rng = StableRNG(123)
@@ -166,4 +180,27 @@ end
         println(io, m)
         @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
     end
+end
+
+@testset "Test additive" begin
+
+    rng = StableRNG(123)
+
+    n = 1000
+    x1 = randn(rng, n)
+    x2 = randn(rng, n)
+
+    y = x1 .* clamp.(x1 .- 1, 0, Inf) + x2 .* clamp.(1 .- x2, -Inf, 0) + 0.25*randn(rng, n)
+    X = (x1=x1, x2=x2)
+
+    m = fit(EarthModel, X, y; maxorder=1)
+
+    z = range(-3, 3, 100)
+    y1 = predict(m, (x1=z, x2=zeros(100)))
+    y1x = z .* clamp.(z .- 1, 0, Inf)
+    @test mean(abs.(y1 - y1x)) < 0.05
+
+    y2 = predict(m, (x1=zeros(100), x2=z))
+    y2x = z .* clamp.(1 .- z, -Inf, 0)
+    @test mean(abs.(y2 - y2x)) < 0.05
 end

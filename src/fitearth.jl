@@ -22,15 +22,25 @@ struct EarthTerm
     # The hinge functions whose product forms this MARS term.
     hinges::Vector{Hinge}
 
+    # Number of times that each variable in the parent data matrix are active
+    # in this term.
+    vmask::Vector{Int}
+
     # Indicators of which variables in the parent data matrix are active
     # in this term.
-    vmask::Vector{Bool}
+    bmask::Vector{Int}
 end
 
 # Returns the order of a term, which is the number of distinct variables
 # in the term.
 function order(T::EarthTerm)
-    return sum(T.vmask)
+    return sum(T.bmask)
+end
+
+# Returns the degree of a term, which is the maximum number of hinge
+# functions for a single variable that occur in the term.
+function degree(T::EarthTerm)
+    return maximum(T.vmask)
 end
 
 mutable struct EarthModel
@@ -60,6 +70,10 @@ mutable struct EarthModel
 
     # Maximum number of variables in any single term.
     maxorder::Int
+
+    # The maximum number of times that a variable can
+    # be present in a single term
+    maxdegree::Int
 
     # The residual sum of squares at each forward iteration
     rss::Vector{Float64}
@@ -91,6 +105,11 @@ end
 # Returns the orders of all terms in the model.
 function order(E::EarthModel)
     return order.(E.Terms)
+end
+
+# Returns the degrees of all terms in the model.
+function degree(E::EarthModel)
+    return degree.(E.Terms)
 end
 
 function response(E::EarthModel)
@@ -179,7 +198,7 @@ end
 # Constructor
 function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
                     vnames::Vector{<:AbstractString}=[], constraints=Set{Vector{Bool}}(),
-                    maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2), levels::Vector=[])
+                    maxorder=2, maxdegree=2, knot_penalty=ifelse(maxorder>1, 3, 2), levels::Vector=[])
     n, p = size(X)
     if length(y) != n
         throw(ArgumentError("The length of y must match the leading dimension of X."))
@@ -199,8 +218,9 @@ function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
 
     # Always start with an intercept
     icept = Hinge(-1, 0, true)
-    vmask = zeros(Bool, p)
-    term = EarthTerm(Hinge[icept,], vmask)
+    vmask = zeros(Int, p)
+    bmask = zeros(Bool, p)
+    term = EarthTerm(Hinge[icept,], vmask, bmask)
 
     # Fitted values based on the intercept-only model
     yhat = mean(y) * ones(n)
@@ -217,7 +237,8 @@ function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
     nterms = Int[1]
 
     return EarthModel(EarthTerm[term], D, U, resid, constraints, K, [],
-                      maxorder, rss, edof, nterms, knot_penalty, X, y, vnames, levels)
+                      maxorder, maxdegree, rss, edof, nterms, knot_penalty,
+                      X, y, vnames, levels)
 end
 
 function handle_covars(X)
@@ -276,7 +297,7 @@ end
 
 """
     fit(EarthModel, X, y; knots=20, maxit=10, constraints=Set{Vector{Bool}}(),
-        prune=true, verbose=false, knot_penalty=ifelse(maxorder>1, 3, 2), maxorder=2)
+        prune=true, verbose=false, maxorder=2, maxdegree=2, knot_penalty=ifelse(maxorder>1, 3, 2))
 
 Fit a regression model using an approach similar to Friedman's 1991
 MARS procedure (also known as Earth for trademark reasons).  The
@@ -300,8 +321,9 @@ vectors.
 - `constraints`: A set of bit vectors that constrain the combinations of variables that can be used to produce a term.
 - `prune`: If false, perform the basis construction step but do not perform the pruning step.
 - `verbose`: Print some information as the fitting algorithm runs.
-- `knot_penalty`: A parameter that controls how easily a new term can enter the model.
 - `maxorder`: The maximum number of distinct variables that can be present in a single term.
+- `maxdegree`: The maximum number of hinges for a single variable that can occur in one term
+- `knot_penalty`: A parameter that controls how easily a new term can enter the model.
 
 References:
 
@@ -310,7 +332,7 @@ Ann. Statist. 19(1): 1-67 (March, 1991). DOI: 10.1214/aos/1176347963
 https://projecteuclid.org/journals/annals-of-statistics/volume-19/issue-1/Multivariate-Adaptive-Regression-Splines/10.1214/aos/1176347963.full
 """
 function fit(::Type{EarthModel}, X, y; knots=20, maxit=10, constraints=Set{Vector{Bool}}(),
-             prune=true, verbose=false, maxorder=2, knot_penalty=ifelse(maxorder>1, 3, 2))
+             prune=true, verbose=false, maxorder=2, maxdegree=2, knot_penalty=ifelse(maxorder>1, 3, 2))
 
     cols, levs, nams = handle_covars(X)
     vnames, X = build_design(cols, levs, nams)
@@ -320,7 +342,8 @@ function fit(::Type{EarthModel}, X, y; knots=20, maxit=10, constraints=Set{Vecto
     end
 
     E = EarthModel(X, y, knots; vnames=vnames, constraints=constraints,
-                   knot_penalty=knot_penalty, maxorder=maxorder, levels=levs)
+                   knot_penalty=knot_penalty, levels=levs, maxorder=maxorder,
+                   maxdegree=maxdegree)
     fit!(E; maxit=maxit, prune=prune, verbose=verbose)
     return E
 end
@@ -407,7 +430,8 @@ function addterm!(E::EarthModel, iterm::Int, h::Hinge, z::Vector{Float64})
     # Specification of the term to be added
     newterm = deepcopy(term)
     push!(newterm.hinges, h)
-    newterm.vmask[h.var] = 1
+    newterm.vmask[h.var] += 1
+    newterm.bmask[h.var] = true
     push!(E.Terms, newterm)
 
     # Add the term data
@@ -521,14 +545,17 @@ end
 # a combination of terms that is not in `constraints`.  If
 # `constraints` is empty then the latter condition is not tested.
 function isvalid(E::EarthModel, iterm::Int, ivar::Int)
-    (; Terms, constraints, maxorder) = E
+    (; Terms, constraints, maxorder, maxdegree) = E
     t = Terms[iterm]
-    s = t.vmask[ivar]
-    t.vmask[ivar] = 1
-    f1 = length(constraints) > 0 ? t.vmask in constraints : true
-    f2 = sum(t.vmask) <= maxorder
-    t.vmask[ivar] = s
-    return f1 && f2
+    s = t.bmask[ivar]
+    t.bmask[ivar] = true
+    t.vmask[ivar] += 1
+    f1 = length(constraints) > 0 ? t.bmask in constraints : true
+    f2 = sum(t.bmask) <= maxorder
+    f3 = maximum(t.vmask) <= maxdegree
+    t.bmask[ivar] = s
+    t.vmask[ivar] -= 1
+    return f1 && f2 && f3
 end
 
 # Add the next best-fitting basis term to the model.
@@ -579,6 +606,12 @@ function prune!(E; verbose::Bool=false)
 
     (; y, D) = E
 
+    if length(D) < 2
+        E.coef = Float64[mean(y)]
+        E.resid .= y
+        return
+    end
+
     # Design matrix excluding the intercept
     X = hcat(D[2:end]...)
 
@@ -596,7 +629,7 @@ function prune!(E; verbose::Bool=false)
 
     D = hcat(E.D...)
     E.coef = qr(D) \ y
-    E.resid = y - D * E.coef
+    E.resid .= y - D * E.coef
 end
 
 # Update the basis vector `z` in-place by multiplying it by the hinge
