@@ -79,11 +79,11 @@ X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR]
 # term to 1.  Note that each term only involves a
 # single covariate.
 
-m1 = fit(EarthModel, X, y; verbose=true, maxorder=1)
+m1 = fit(EarthModel, X, y; verbose=true, maxorder=1, maxdegree=1)
 
 # Allow nonlinear main effects and two-way interactions.
 
-m2 = fit(EarthModel, X, y; verbose=true, maxorder=2)
+m2 = fit(EarthModel, X, y; verbose=true, maxorder=2, maxdegree=1)
 
 # Get the adjusted r-squared sequences for each model.
 

@@ -621,7 +621,7 @@ function prune!(E; verbose::Bool=false)
     ii = findall(c .!= 0)
     if verbose
         b = length(c) - length(ii)
-        println("Dropping $b terms")
+        println("\nDropping $b terms using LASSO")
     end
     E.Terms = E.Terms[ii]
     E.D = E.D[ii]
