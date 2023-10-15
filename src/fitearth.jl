@@ -341,7 +341,7 @@ function fit!(E::EarthModel; maxit=10, prune=true, verbose=verbose)
     pr = ProgressMeter.Progress(maxit; desc="Pruning...", enabled=verbose)
     if prune
         verbose && ProgressMeter.next!(pr)
-        prune!(E)
+        prune!(E; verbose=verbose)
     else
         D = hcat(E.D...)
         E.coef = qr(D) \ E.y
@@ -575,7 +575,7 @@ function nextterm!(E::EarthModel)
 end
 
 # Use the Lasso to drop irrelevant terms from the model.
-function prune!(E)
+function prune!(E; verbose::Bool=false)
 
     (; y, D) = E
 
@@ -586,6 +586,10 @@ function prune!(E)
     c = Lasso.coef(m)
 
     ii = findall(c .!= 0)
+    if verbose
+        b = length(c) - length(ii)
+        println("Dropping $b terms")
+    end
     E.Terms = E.Terms[ii]
     E.D = E.D[ii]
     E.U = []
@@ -617,20 +621,23 @@ function Base.show(io::IO, h::Hinge; vnames=String[])
         print(io, "intercept")
         return
     end
-    sym = h.dir ? ">" : "<"
     vname = if length(vnames) > 0
         vnames[h.var]
     else
         "v$(string(h.var))"
     end
-    print(io, @sprintf("%s %s %.3f", vname, sym, h.cut))
+    if h.dir
+        print(io, @sprintf("h(%s - %.3f)", vname, h.cut))
+    else
+        print(io, @sprintf("h(%.3f - %s)", h.cut, vname))
+    end
 end
 
 function Base.show(io::IO, t::EarthTerm; vnames=String[])
     for (j,h) in enumerate(t.hinges)
         show(io, h; vnames=vnames)
         if j < length(t.hinges)
-            print(io, " & ")
+            print(io, " * ")
         end
     end
 end

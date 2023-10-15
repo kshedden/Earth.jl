@@ -34,7 +34,7 @@ using Test
     print(io, h2)
     print(io, h3)
     s = String(take!(io))
-    @test s == "v1 > 0.000v2 > 1.000v3 < -2.000"
+    @test s == "h(v1 - 0.000)h(v2 - 1.000)h(-2.000 - v3)"
 end
 
 @testset "Basic no prune" begin

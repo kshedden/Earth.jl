@@ -1,6 +1,11 @@
+# # Ames housing data
+
 using RCall
-using Earth
 using DataFrames
+using Earth
+
+ENV["GKSwstype"] = "nul" #hide
+using Plots
 
 R"
 install.packages('AmesHousing')
@@ -8,22 +13,26 @@ library(AmesHousing)
 D = make_ames()
 "
 
-ames = @rget D
+ames = @rget D;
 
-y = Float64.(D[:, :Sale_Price])
-X = select(D, Not(:Sale_Price))
+# The response variable is the sale price of each property.
 
-m = fit(EarthModel, X, y; maxit=20, knots=20, knot_penalty=3, maxorder=2, verbose=true)
+y = Float64.(D[:, :Sale_Price]) / 10000;
 
+# Everything else in the dataframe is a covariate
 
+X = select(D, Not(:Sale_Price));
+names(X)
 
+# Fit a model and inspect its structure
 
+m = fit(EarthModel, X, y; maxit=40, maxorder=1, verbose=true)
 
+# Next we generate a plot showing the generalized R2 as we increase the number of terms
 
+r2 = gr2(m)
+p = plot(1:length(r2), r2, xlabel="Number of terms", ylabel="R2")
+plot!(p, 1:length(r2), r2, label="2")
+Plots.savefig(p, "./assets/ames1.svg");
 
-
-
-
-
-
-
+# ![R-squares](assets/ames1.svg)

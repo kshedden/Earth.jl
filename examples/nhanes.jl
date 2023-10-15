@@ -76,7 +76,8 @@ y = da[:, :BPXSY1];
 X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR], RIDRETH1=da[:, :RIDRETH1]);
 
 # Fit an additive model, limiting the order of each
-# term to 1.
+# term to 1.  Note that each term only involves a
+# single covariate.
 
 m1 = fit(EarthModel, X, y; verbose=true, maxorder=1)
 
@@ -88,10 +89,9 @@ m2 = fit(EarthModel, X, y; verbose=true, maxorder=2)
 
 r2_1 = gr2(m1)
 r2_2 = gr2(m2)
-
 m = length(r2_1)
 p = plot(1:m, r2_1, xlabel="Number of terms", ylabel="R2", label="1")
-plot!(p, 1:m, r2_1, label="2")
+plot!(p, 1:m, r2_2, label="2")
 Plots.savefig(p, "./assets/nhanes1.svg");
 
 # ![R-squares](assets/nhanes1.svg)
