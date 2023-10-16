@@ -16,7 +16,7 @@ using Earth
 using Plots
 using ReadStatTables
 
-dfile = "assets/nhanes2017.csv.gz"
+dfile = "assets/nhanes2017.csv.gz";
 
 # The function below downloads and merges the data sets.
 
@@ -75,13 +75,13 @@ y = da[:, :BPXSY1];
 
 X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR], RIDRETH1=da[:, :RIDRETH1]);
 
-# Fit an additive model, limiting the order of each
-# term to 1.  Note that each term only involves a
-# single covariate.
+# Fit an additive model, limiting the order and degree of each
+# term to 1.  Note that each term only involves a single covariate.
 
 m1 = fit(EarthModel, X, y; verbose=true, maxorder=1, maxdegree=1)
 
-# Allow nonlinear main effects and two-way interactions.
+# Fit another model that allows nonlinear main effects and two-way
+# interactions.
 
 m2 = fit(EarthModel, X, y; verbose=true, maxorder=2, maxdegree=1)
 

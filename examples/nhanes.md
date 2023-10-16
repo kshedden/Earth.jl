@@ -20,11 +20,7 @@ using Earth
 using Plots
 using ReadStatTables
 
-dfile = "assets/nhanes2017.csv.gz"
-````
-
-````
-"assets/nhanes2017.csv.gz"
+dfile = "assets/nhanes2017.csv.gz";
 ````
 
 The function below downloads and merges the data sets.
@@ -97,55 +93,52 @@ Construct the covariates as a named tuple:
 X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR], RIDRETH1=da[:, :RIDRETH1]);
 ````
 
-Fit an additive model, limiting the order of each
-term to 1.
+Fit an additive model, limiting the order and degree of each
+term to 1.  Note that each term only involves a single covariate.
 
 ````julia
-m1 = fit(EarthModel, X, y; verbose=true, maxorder=1)
+m1 = fit(EarthModel, X, y; verbose=true, maxorder=1, maxdegree=1)
 ````
 
 ````
-   118.164  intercept
-     0.320  intercept & RIDAGEYR > 34.000
-    -0.233  intercept & RIDAGEYR < 34.000
-     0.574  intercept & BMXBMI > 33.042
-    -0.239  intercept & BMXBMI < 33.042
-     3.592  intercept & RIDRETH1::NHB > 0.000
-    -3.106  intercept & RIDRETH1::NHW > 0.000
-    -2.573  intercept & RIAGENDR::Female > 0.000
-     0.007  intercept & RIDAGEYR > 34.000 & RIDAGEYR > 75.000
-     0.494  intercept & RIDAGEYR > 55.474
-     0.001  intercept & RIDAGEYR > 34.000 & RIDAGEYR < 75.000 & RIDAGEYR > 49.000
-     0.001  intercept & RIDAGEYR > 34.000 & RIDAGEYR < 75.000 & RIDAGEYR < 49.000
-    -0.000  intercept & RIDAGEYR > 34.000 & RIDAGEYR < 75.000 & RIDAGEYR > 49.000 & RIDAGEYR > 61.000
-     0.000  intercept & RIDAGEYR > 34.000 & RIDAGEYR < 75.000 & RIDAGEYR > 49.000 & RIDAGEYR < 61.000
-    -0.008  intercept & BMXBMI > 33.042 & BMXBMI > 34.500
-    -4.574  intercept & BMXBMI > 33.042 & BMXBMI < 34.500
+   129.001  intercept
+     0.266  intercept * h(34.000 - RIDAGEYR)
+     0.312  intercept * h(BMXBMI - 33.042)
+     3.581  intercept * h(RIDRETH1::NHB - 0.000)
+    -3.058  intercept * h(RIDRETH1::NHW - 0.000)
+    -2.508  intercept * h(RIAGENDR::Female - 0.000)
+     0.956  intercept * h(RIDAGEYR - 75.000)
+    -0.501  intercept * h(59.000 - RIDAGEYR)
+     0.306  intercept * h(RIDAGEYR - 49.000)
+     0.084  intercept * h(RIDAGEYR - 61.000)
+     0.156  intercept * h(BMXBMI - 23.900)
+    -0.461  intercept * h(23.900 - BMXBMI)
 
 ````
 
-Allow nonlinear main effects and two-way interactions.
+Fit another model that allows nonlinear main effects and two-way
+interactions.
 
 ````julia
-m2 = fit(EarthModel, X, y; verbose=true, maxorder=2)
+m2 = fit(EarthModel, X, y; verbose=true, maxorder=2, maxdegree=1)
 ````
 
 ````
-   114.232  intercept
-     0.320  intercept & RIDAGEYR > 34.000
-    -0.340  intercept & RIDAGEYR < 34.000
-     0.395  intercept & BMXBMI > 33.042
-    -0.892  intercept & BMXBMI < 33.042
-    -0.167  intercept & RIDAGEYR > 34.000 & RIDRETH1::NHW > 0.000
-     0.045  intercept & BMXBMI < 33.042 & RIDAGEYR > 41.000
-     0.026  intercept & BMXBMI < 33.042 & RIDAGEYR < 41.000
-     6.384  intercept & RIDRETH1::NHB > 0.000
-    -0.499  intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474
-    -0.127  intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR < 55.474
-     0.352  intercept & RIDAGEYR > 34.000 & RIAGENDR::Female > 0.000
-     8.699  intercept & RIAGENDR::Female < 1.000
-     0.011  intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474 & RIDAGEYR > 59.000
-     2.302  intercept & RIDRETH1::NHB > 0.000 & RIDAGEYR > 55.474 & RIDAGEYR < 59.000
+   114.143  intercept
+     0.314  intercept * h(RIDAGEYR - 34.000)
+    -0.351  intercept * h(34.000 - RIDAGEYR)
+     0.371  intercept * h(BMXBMI - 33.042)
+    -0.891  intercept * h(33.042 - BMXBMI)
+    -0.161  intercept * h(RIDAGEYR - 34.000) * h(RIDRETH1::NHW - 0.000)
+     0.045  intercept * h(33.042 - BMXBMI) * h(RIDAGEYR - 41.000)
+     0.027  intercept * h(33.042 - BMXBMI) * h(41.000 - RIDAGEYR)
+     0.006  intercept * h(34.000 - RIDAGEYR) * h(RIAGENDR::Female - 0.000)
+     6.907  intercept * h(RIDRETH1::NHB - 0.000)
+    -0.345  intercept * h(RIDRETH1::NHB - 0.000) * h(RIDAGEYR - 55.474)
+    -0.142  intercept * h(RIDRETH1::NHB - 0.000) * h(55.474 - RIDAGEYR)
+     0.355  intercept * h(RIDAGEYR - 34.000) * h(RIAGENDR::Female - 0.000)
+     8.766  intercept * h(1.000 - RIAGENDR::Female)
+     0.698  intercept * h(BMXBMI - 33.042) * h(RIDRETH1::OH - 0.000)
 
 ````
 
@@ -154,10 +147,9 @@ Get the adjusted r-squared sequences for each model.
 ````julia
 r2_1 = gr2(m1)
 r2_2 = gr2(m2)
-
 m = length(r2_1)
 p = plot(1:m, r2_1, xlabel="Number of terms", ylabel="R2", label="1")
-plot!(p, 1:m, r2_1, label="2")
+plot!(p, 1:m, r2_2, label="2")
 Plots.savefig(p, "./assets/nhanes1.svg");
 ````
 

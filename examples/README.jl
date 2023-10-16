@@ -1,3 +1,6 @@
+ENV["GKSwstype"] = "nul" #hide
+using Earth, Plots, StableRNGs, LaTeXStrings, Statistics, Printf
+
 # # Earth/MARS
 
 # This is a Julia implementation of a regression modeling procedure that
@@ -5,80 +8,138 @@
 # Splines (MARS), which is also known as Earth for trademark reasons.
 
 # The forward (basis-construction) phase used here should be identical
-# to the original MARS procedure.  While the original MARS used backward
-# selection for model pruning, this implementation uses the Lasso, which
-# was not invented yet at the time that MARS was conceived.
+# to the original MARS procedure.  The original MARS used backward
+# selection for model pruning, but this implementation uses the Lasso,
+# which was not invented yet at the time that MARS was conceived.
 
 # ## Usage
 
-# The following example fits an additive model using two explanatory
-# variables.  The additive contribution of X1 is quadratic and the
-# additive contribution of X2 is linear.  Setting `maxorder=1`
-# fits an additive model with no interaction between X1 and X2.
-
-ENV["GKSwstype"] = "nul" #hide
-using Earth, Plots, StableRNGs, LaTeXStrings, Statistics, Printf
+# The following example has three explanatory variables with an additive
+# mean structure.  The additive contribution of x1 is quadratic, the
+# additive contribution of x2 is linear, and x3 does not contribute
+# to the mean structure.
 
 rng = StableRNG(123)
 n = 500
-X = randn(rng, n, 2)
+X = randn(rng, n, 3)
 Ey = X[:, 1].^2 - X[:, 2]
 y = Ey + randn(rng, n)
-m = fit(EarthModel, X, y; maxorder=1)
 
-## Estimate E[y | x1, x2=0]
+# There are several ways to control the structure of the model
+# fit by Earth.  First we set `maxorder=1`, which produces an
+# additive fit, meaning that each term in the fitted mean
+# structure involves only one of the original variables.  By
+# default, the maximum "degree" of the fitted model is two,
+# meaning that each term can include up to two hinges involving
+# the same variable.  The constraints `maxorder=1` and `maxdegree=2`
+# allow Earth to exactly represent the true mean structure in this
+# example.
+
+md1 = fit(EarthModel, X, y; maxorder=1)
+
+# To visualize how well we have fit the mean structure, we can consider
+# the fitted conditional mean of Y as a function of x1, holding
+# x2 fixed at zero.  The true value of this function is $Ey = x_1^2$.
+
 x = -2:0.2:2
-X1 = [x zeros(length(x))]
-y1 = predict(m, X1)
+X1 = [x zeros(length(x)) zeros(length(x))]
+y1 = predict(md1, X1)
 
-## Estimate E[y | x1=0, x2]
-x = -2:0.2:2
-X2 = [zeros(length(x)) x]
-y2 = predict(m, X2)
-
-p = plot(x, y1, label=L"$E[y | x_1, x_2=0]$", ylabel=L"$y$",
+p = plot(x, y1, xlabel=L"$x_1$", ylabel=L"$y$", label=L"$E[y | x_1, x_2=0]$",
          size=(400, 300))
-p = plot!(p, x, y2, label=L"$E[y | x_1=0, x_2]$")
-Plots.savefig(p, "./assets/readme1.svg")
-
-# The following effect plots show the estimated contributions
-# of X1 and X2 to the fitted regression model.
+p = plot!(p, x, x.^2, label=L"$y = x_1^2$")
+Plots.savefig(p, "../assets/readme1.svg")
 
 # ![Example plot 1](assets/readme1.svg)
 
-# The following example has a nonlinear and non-additive
-# mean structure. The standard deviation of the residuals
-# is very close to the standard deviation of the residuals,
+# We can also consider the fitted conditional mean of y as a function
+# of x2, holding x1 fixed at zero.  The true value of this function
+# is $Ey = -x_2$.
+
+x = -2:0.2:2
+X2 = [zeros(length(x)) x zeros(length(x))]
+y2 = predict(md1, X2)
+
+p = plot(x, y2, label=L"$E[y | x_1=0, x_2]$", xlabel=L"$x_2$", ylabel=L"$y$",
+         size=(400, 300))
+p = plot!(p, x, -x, label=L"$y = -x_2$")
+Plots.savefig(p, "../assets/readme2.svg")
+
+# ![Example plot 1](assets/readme2.svg)
+
+# Next we refit the model using Earth, but allowing up to two-way
+# interactions (even though no two-way interactions are present.
+
+md2 = fit(EarthModel, X, y; maxorder=2, maxdegree=2)
+
+x = -2:0.2:2
+X1 = [x zeros(length(x)) zeros(length(x))]
+y1 = predict(md2, X1)
+p = plot(x, y1, xlabel=L"$x_1$", ylabel=L"$y$", label=L"$E[y | x_1, x_2=0]$",
+         size=(400, 300))
+p = plot!(p, x, x.^2, label=L"$y = x_1^2$")
+Plots.savefig(p, "../assets/readme3.svg")
+
+# ![Example plot 3](assets/readme3.svg)
+
+# Now we specify a different population structure that is
+# not additive. The standard deviation of the residuals
+# is very close to the standard deviation of the errors,
 # which is 1.
 
 rng = StableRNG(123)
-n = 500
-X = randn(rng, n, 2)
+n = 1000
+X = randn(rng, n, 3)
 Ey = X[:, 1].^2 + X[:, 1] .* X[:, 2]
 y = Ey  + randn(rng, n)
-m = fit(EarthModel, X, y)
 
-yhat = predict(m)
-res = residuals(m)
+md3 = fit(EarthModel, X, y)
 
-p = plot(yhat, res, label=nothing, size=(400, 300), seriestype=:scatter,
-         markeralpha=0.5, xlabel="Fitted values",
-         ylabel=@sprintf("Residuals (SD=%.2f)", std(res)))
-Plots.savefig(p, "./assets/readme2.svg")
+# One way to assess how well we have fit the mean structure is
+# by considering the mean squared error (MSE). If we have closely
+# captured the mean structure, then the MSE should be close to the
+# residual variance, which is 1.
 
-# ![Example plot 2](assets/readme2.svg)
+res = residuals(md3)
+mean(res.^2)
 
-p = plot(m.nterms, gr2(m), label=L"Estimated $r^2$", size=(400, 300),
-         xlabel="Number of terms", ylabel=L"$r^2$")
-p = plot!(p, m.nterms, cor(Ey, y)^2*ones(length(m.nterms)), label=L"True $r^2$")
-Plots.savefig(p, "./assets/readme3.svg")
+# Below we plot three conditional mean functions of the form
+# E[y | x_1, x_2=f] for fixed values of f (0, 1, and 2).
+
+function make_plot(md)
+    x = -2:0.2:2
+    p = nothing
+    yy = []
+    cols = ["orange", "purple", "lime"]
+    for (j,f) in enumerate([0, 1, 2])
+        X1 = [x f*ones(length(x)) zeros(length(x))]
+        yp = predict(md, X1)
+        p = if j == 1
+            plot(x, x.^2 + f*x, xlabel=L"$x$", ylabel=L"$y$", label=L"$E[y | x_1, x_2=%$f]$",
+                 color=cols[j], size=(400, 300))
+        else
+            plot!(p, x, x.^2 + f*x, color=cols[j], label=L"$E[y | x_1, x_2=%$f]$")
+        end
+        plot!(p, x, yp, color=cols[j], label=L"$\hat{E}[y | x_1, x_2=%$f]$")
+    end
+    Plots.savefig(p, "../assets/readme4.svg")
+end
+
+make_plot(md3)
+
+# ![Example plot 4](assets/readme4.svg)
 
 # Below we plot the generalized r-squared statistic against the number of
 # model terms (the degrees of freedom in the model) during the forward
 # phase of model construction.  The true (population) r-squared value is
 # also plotted.
 
-# ![Example plot 3](assets/readme3.svg)
+p = plot(md3.nterms, gr2(md3), label=L"Estimated $r^2$", size=(400, 300),
+         xlabel="Number of terms", ylabel=L"$r^2$")
+p = plot!(p, md3.nterms, cor(Ey, y)^2*ones(length(md3.nterms)), label=L"True $r^2$")
+Plots.savefig(p, "../assets/readme5.svg")
+
+# ![Example plot 5](assets/readme5.svg)
 
 # ## References
 
