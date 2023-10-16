@@ -1,11 +1,3 @@
-```@meta
-EditURL = "README.jl"
-```
-
-````julia
-using Earth, Plots, StableRNGs, LaTeXStrings, Statistics, Printf
-````
-
 # Earth/MARS
 
 This is a Julia implementation of a regression modeling procedure that
@@ -19,12 +11,14 @@ which was not invented yet at the time that MARS was conceived.
 
 ## Usage
 
-The following example has three explanatory variables with an additive
-mean structure.  The additive contribution of x1 is quadratic, the
-additive contribution of x2 is linear, and x3 does not contribute
-to the mean structure.
+The following example has three explanatory variables (x1, x2, x3)
+with an additive mean structure.  The additive contribution of x1
+is quadratic, the additive contribution of x2 is linear, and x3
+does not contribute to the mean structure.
 
 ````julia
+using Earth, Plots, StableRNGs, LaTeXStrings, Statistics, Printf
+
 rng = StableRNG(123)
 n = 500
 X = randn(rng, n, 3)
@@ -33,11 +27,11 @@ y = Ey + randn(rng, n);
 ````
 
 There are several ways to control the structure of the model
-fit by Earth.  First we set `maxorder=1`, which produces an
-additive fit, meaning that each term in the fitted mean
-structure involves only one of the original variables.  By
-default, the maximum "degree" of the fitted model is two,
-meaning that each term can include up to two hinges involving
+fit by Earth.  In the first example below we set `maxorder=1`,
+which produces an additive fit, meaning that each term in the
+fitted mean structure involves only one of the original variables.
+By default, the maximum "degree" of any term in the fitted model is
+two, meaning that each term can include up to two hinges involving
 the same variable.  The constraints `maxorder=1` and `maxdegree=2`
 allow Earth to exactly represent the true mean structure in this
 example.
@@ -107,6 +101,8 @@ Plots.savefig(p, "../assets/readme2.svg")
 
 Next we refit the model using Earth, but allowing up to two-way
 interactions (even though no two-way interactions are present.
+In spite of the added flexibility, we still do a good job
+capturing the mean structure.
 
 ````julia
 md2 = fit(EarthModel, X, y; maxorder=2, maxdegree=2)
@@ -126,10 +122,8 @@ Plots.savefig(p, "../assets/readme3.svg")
 
 ![Example plot 3](assets/readme3.svg)
 
-Now we specify a different population structure that is
-not additive. The standard deviation of the residuals
-is very close to the standard deviation of the errors,
-which is 1.
+Next we specify a different population structure that is
+not additive.
 
 ````julia
 rng = StableRNG(123)
@@ -178,7 +172,7 @@ mean(res.^2)
 ````
 
 Below we plot three conditional mean functions of the form
-E[y | x_1, x_2=f] for fixed values of f (0, 1, and 2).
+E[y | x_1, x_2=f] for fixed values of f=0, 1, 2.
 
 ````julia
 function make_plot(md)
