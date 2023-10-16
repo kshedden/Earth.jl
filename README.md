@@ -201,7 +201,7 @@ make_plot(md3)
 "/home/kshedden/Projects/julia/Earth/assets/readme4.svg"
 ````
 
-![Example plot 4](assets/readme4.svg)
+[Example plot 4](assets/readme4.svg)
 
 Below we plot the generalized r-squared statistic against the number of
 model terms (the degrees of freedom in the model) during the forward
