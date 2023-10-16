@@ -23,7 +23,7 @@ rng = StableRNG(123)
 n = 500
 X = randn(rng, n, 3)
 Ey = X[:, 1].^2 - X[:, 2]
-y = Ey + randn(rng, n)
+y = Ey + randn(rng, n);
 
 # There are several ways to control the structure of the model
 # fit by Earth.  First we set `maxorder=1`, which produces an
