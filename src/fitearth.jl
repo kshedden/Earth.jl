@@ -93,6 +93,9 @@ mutable struct EarthModel
     # The response
     y::Vector{Float64}
 
+    # The variance of y
+    vary::Float64
+
     # Variable names
     vnames::Vector{String}
 
@@ -238,7 +241,7 @@ function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, knots;
 
     return EarthModel(EarthTerm[term], D, U, resid, constraints, K, [],
                       maxorder, maxdegree, rss, edof, nterms, knot_penalty,
-                      X, y, vnames, levels)
+                      X, y, var(y), vnames, levels)
 end
 
 function handle_covars(X)
@@ -355,21 +358,21 @@ function fit!(E::EarthModel; maxit=10, prune=true, verbose=verbose)
     kp = 0
     for k in 1:maxit
         kp += k
-        verbose && ProgressMeter.update!(pr, kp)
-        nextterm!(E)
+        rr = nextterm!(E)
+        if verbose
+            ProgressMeter.update!(pr, kp)
+            println("Improvement in R^2: $(rr)")
+        end
     end
     verbose && ProgressMeter.finish!(pr)
 
     # Pruning
-    pr = ProgressMeter.Progress(maxit; desc="Pruning...", enabled=verbose)
     if prune
-        verbose && ProgressMeter.next!(pr)
-        prune!(E; verbose=verbose)
+        verbose && println("Pruning...")
     else
         D = hcat(E.D...)
         E.coef = qr(D) \ E.y
     end
-    verbose && ProgressMeter.finish!(pr)
 end
 
 # Replace z with its projection onto the orthogonal complement of the
@@ -472,7 +475,8 @@ end
 # on the variable with index 'ivar'.  The hinge functions are
 # constructed using the knot at position 'icut'.  The newly
 # constructed terms are written into the arrays 'z1' and 'z2'.
-function mirrorbasis(E::EarthModel, iterm::Int, ivar::Int, icut::Int, z1::Vector{Float64}, z2::Vector{Float64})
+function mirrorbasis(E::EarthModel, iterm::Int, ivar::Int, icut::Int,
+                     z1::Vector{Float64}, z2::Vector{Float64})
     (; Terms, K, D, X) = E
     t = Terms[iterm]
     z = D[iterm]
@@ -490,11 +494,12 @@ function mirrorbasis(E::EarthModel, iterm::Int, ivar::Int, icut::Int, z1::Vector
     return h1, h2
 end
 
-# Calculate fitted values for a model that adds variables `z1` and
-# `z2` to the current model.  These variables are only included if
-# they have norm exceeding `qtol` when residualized against all terms
+# Calculate fitted values for the residuals in a model that adds
+# variables `z1` and `z2` to the current model.  These variables
+# are only included if they have norm exceeding `qtol` when residualized against all terms
 # that are already in the model.  This function returns updated fitted
-# values, and indicators of whether each of the new terms was used to
+# values (to the residual), and indicators of whether each of the two
+# new terms was used to
 # determine the fit.
 function fitreg(E::EarthModel, z1, z2; qtol::Float64=1e-10)
 
@@ -558,10 +563,11 @@ function isvalid(E::EarthModel, iterm::Int, ivar::Int)
     return f1 && f2 && f3
 end
 
-# Add the next best-fitting basis term to the model.
+# Add the next best-fitting basis term to the model.  Returns the
+# improvement in R^2 based on the term addition.
 function nextterm!(E::EarthModel)
 
-    (; K, X) = E
+    (; K, X, vary) = E
     n, p = size(X)
     z1 = zeros(n)
     z2 = zeros(n)
@@ -598,7 +604,10 @@ function nextterm!(E::EarthModel)
 
     if ii != -1
         addterm!(E, ii, jj, kk)
+        return rr / (n * vary)
     end
+
+    return 0.0
 end
 
 # Use the Lasso to drop irrelevant terms from the model.
@@ -606,11 +615,18 @@ function prune!(E; verbose::Bool=false)
 
     (; y, D) = E
 
-    if length(D) < 2
+    if length(D) == 0
+        # This should never happen
+        verbose && println("Empty model")
+        return
+    elseif length(D) == 1
+        verbose && println("No terms to prune")
         E.coef = Float64[mean(y)]
-        E.resid .= y
+        E.resid .= y - mean(y)
         return
     end
+
+    verbose && println("Pruning...")
 
     # Design matrix excluding the intercept
     X = hcat(D[2:end]...)
