@@ -1,6 +1,6 @@
 README:
-	julia --project=. build.jl README.jl
-	cp README.md ..
+	julia --project=. build.jl readme.jl
+	cp readme.md ../README.md
 
 nhanes:
 	julia --project=. build.jl nhanes.jl
