@@ -1,8 +1,9 @@
 # Earth/MARS
 
-This is a Julia implementation of a regression modeling procedure that
-is similar to Jerome Friedman's 1991 Multivariate Adaptive Regression
-Splines (MARS), which is also known as Earth for trademark reasons.
+This is a Julia implementation of a regression modeling procedure
+that is similar to Jerome Friedman's 1991 Multivariate Adaptive
+Regression Splines (MARS), which is also known as Earth for
+trademark reasons.
 
 The forward (basis-construction) phase used here should be identical
 to the original MARS procedure.  The original MARS used backward
@@ -12,9 +13,9 @@ which was not invented yet at the time that MARS was conceived.
 ## Usage
 
 The following example has three explanatory variables (x1, x2, x3)
-with an additive mean structure.  The additive contribution of x1
-is quadratic, the additive contribution of x2 is linear, and x3
-does not contribute to the mean structure.
+with an additive mean structure.  The additive contribution of x1 is
+quadratic, the additive contribution of x2 is linear, and x3 does
+not contribute to the mean structure.
 
 ````julia
 using Earth, Plots, StableRNGs, LaTeXStrings, Statistics, Printf
@@ -26,15 +27,8 @@ Ey = X[:, 1].^2 - X[:, 2]
 y = Ey + randn(rng, n);
 ````
 
-There are several ways to control the structure of the model
-fit by Earth.  In the first example below we set `maxorder=1`,
-which produces an additive fit, meaning that each term in the
-fitted mean structure involves only one of the original variables.
-By default, the maximum "degree" of any term in the fitted model is
-two, meaning that each term can include up to two hinges involving
-the same variable.  The constraints `maxorder=1` and `maxdegree=2`
-allow Earth to exactly represent the true mean structure in this
-example.
+First we fit a model using Earth, constraining the "order" to 1,
+which will be discussed further below.
 
 ````julia
 cfg = EarthConfig(; maxorder=1)
@@ -59,9 +53,15 @@ md1 = fit(EarthModel, X, y; config=cfg, verbose=true)
 
 ````
 
-To visualize how well we have fit the mean structure, we can consider
-the fitted conditional mean of Y as a function of x1, holding
-x2 fixed at zero.  The true value of this function is $Ey = x_1^2$.
+The representation of the model displayed above shows all of the
+terms, and how each term is constructed as a product of hinges.  It
+also gives the raw and standardized coefficients for each term.  The
+standardized coefficient adjusts for the variance of the term and is
+a better indicator of how much the term contributes to the model.
+
+To visualize the fitted and true mean structures, we can consider
+the fitted conditional mean of Y as a function of x1, holding x2
+fixed at zero.  The true value of this function is $Ey = x_1^2$.
 
 ````julia
 x = -2:0.2:2
@@ -81,15 +81,15 @@ Plots.savefig(p, "../assets/readme1.svg")
 ![Example plot 1](assets/readme1.svg)
 
 We can also consider the fitted conditional mean of y as a function
-of x2, holding x1 fixed at zero.  The true value of this function
-is $Ey = -x_2$.
+of x2, holding x1 fixed at zero.  The true value of this function is
+$Ey = -x_2$.
 
 ````julia
 x = -2:0.2:2
 X2 = [zeros(length(x)) x zeros(length(x))]
 y2 = predict(md1, X2)
 
-p = plot(x, y2, label=L"$E[y | x_1=0, x_2]$", xlabel=L"$x_2$", ylabel=L"$y$",
+p = plot(x, y2, label=L"$E[y | x_1=0, x_2, x_3=0]$", xlabel=L"$x_2$", ylabel=L"$y$",
          size=(400, 300))
 p = plot!(p, x, -x, label=L"$y = -x_2$")
 Plots.savefig(p, "../assets/readme2.svg")
@@ -101,10 +101,21 @@ Plots.savefig(p, "../assets/readme2.svg")
 
 ![Example plot 1](assets/readme2.svg)
 
+## Specifying the model structure
+
+There are several ways to control the structure of the model fit by
+Earth.  Above we set `maxorder=1`, which produces an additive fit,
+meaning that each term in the fitted mean structure involves only
+one of the original variables.  By default, the maximum "degree" of
+any term in the fitted model is two, meaning that each term can
+include up to two hinges involving the same variable.  The
+constraints `maxorder=1` and `maxdegree=2` allow Earth to exactly
+represent the true mean structure in this example.
+
 Next we refit the model using Earth, but allowing up to two-way
-interactions (even though no two-way interactions are present.
-In spite of the added flexibility, we still do a good job
-capturing the mean structure.
+interactions (even though no two-way interactions are present).  In
+spite of the added (but unneeded) flexibility, we still do a good
+job capturing the mean structure.
 
 ````julia
 cfg = EarthConfig(; maxorder=2, maxdegree=2)
@@ -113,7 +124,7 @@ md2 = fit(EarthModel, X, y; config=cfg)
 x = -2:0.2:2
 X1 = [x zeros(length(x)) zeros(length(x))]
 y1 = predict(md2, X1)
-p = plot(x, y1, xlabel=L"$x_1$", ylabel=L"$y$", label=L"$E[y | x_1, x_2=0]$",
+p = plot(x, y1, xlabel=L"$x_1$", ylabel=L"$y$", label=L"$E[y | x_1, x_2=0, x_3=0]$",
          size=(400, 300))
 p = plot!(p, x, x.^2, label=L"$y = x_1^2$")
 Plots.savefig(p, "../assets/readme3.svg")
@@ -123,9 +134,42 @@ Plots.savefig(p, "../assets/readme3.svg")
 "/home/kshedden/Projects/julia/Earth.jl/assets/readme3.svg"
 ````
 
+Perhaps we may wish to specify a model in which each variable can
+contribute main effects, but only the first two variables may have
+an interaction.  This can be accomplished as follows.
+
+````julia
+constraints = Set([[true, false, false], [false, true, false], [false, false, true], [true, true, false]])
+cfg = EarthConfig(; maxorder=2, maxdegree=2, constraints=constraints)
+md3 = fit(EarthModel, X, y; config=cfg)
+````
+
+````
+     Coef    Std coef    Term
+    -2.656       --      intercept
+    -1.491      -0.754   intercept * h(v1 - 0.205)
+     1.769       1.168   intercept * h(0.205 - v1)
+    -0.371      -0.197   intercept * h(v2 - 0.171)
+     0.618       0.401   intercept * h(0.171 - v2)
+     1.156       1.040   intercept * h(v1 - -1.246)
+     0.451       0.893   intercept * h(v1 - -1.246) * h(v1 - -0.199)
+     0.000       0.000   intercept * h(v1 - 0.205) * h(v2 - -0.746)
+    -0.405      -0.076   intercept * h(v1 - 0.205) * h(-0.746 - v2)
+    -0.054      -0.048   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(v1 - 0.784)
+    -0.734      -0.025   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(0.784 - v1)
+    -0.431      -0.023   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(0.784 - v1) * h(v2 - 0.283)
+    11.235       0.033   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(0.784 - v1) * h(0.283 - v2)
+    -0.084      -0.023   intercept * h(-0.993 - v3)
+     8.663       0.060   intercept * h(v3 - -0.993) * h(-0.632 - v3)
+   -68.573      -0.029   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(v1 - 0.784) * h(-0.613 - v2)
+
+````
+
 ![Example plot 3](assets/readme3.svg)
 
-Next we specify a different population structure that is
+## Assessing goodness of fit
+
+First we generate a new dataset using a population structure that is
 not additive.
 
 ````julia
@@ -135,7 +179,7 @@ X = randn(rng, n, 3)
 Ey = X[:, 1].^2 + X[:, 1] .* X[:, 2]
 y = Ey  + randn(rng, n)
 
-md3 = fit(EarthModel, X, y)
+md4 = fit(EarthModel, X, y)
 ````
 
 ````
@@ -160,13 +204,13 @@ md3 = fit(EarthModel, X, y)
 
 ````
 
-One way to assess how well we have fit the mean structure is
-by considering the mean squared error (MSE). If we have closely
+One way to assess how well we have fit the mean structure is by
+considering the mean squared error (MSE). If we have closely
 captured the mean structure, then the MSE should be close to the
 residual variance, which is 1.
 
 ````julia
-res = residuals(md3)
+res = residuals(md4)
 mean(res.^2)
 ````
 
@@ -174,8 +218,8 @@ mean(res.^2)
 0.9232496017082579
 ````
 
-Below we plot three conditional mean functions of the form
-E[y | x_1, x_2=f] for fixed values of f=0, 1, 2.
+Below we plot three conditional mean functions of the form E[y |
+x_1, x_2=f, x_3=0] for fixed values of f=0, 1, 2.
 
 ````julia
 function make_plot(md)
@@ -197,7 +241,7 @@ function make_plot(md)
     Plots.savefig(p, "../assets/readme4.svg")
 end
 
-make_plot(md3)
+make_plot(md4)
 ````
 
 ````
@@ -206,15 +250,15 @@ make_plot(md3)
 
 ![Example plot 4](assets/readme4.svg)
 
-Below we plot the generalized r-squared statistic against the number of
-model terms (the degrees of freedom in the model) during the forward
-phase of model construction.  The true (population) r-squared value is
-also plotted.
+Below we plot the generalized r-squared statistic against the number
+of model terms (the degrees of freedom in the model) during the
+forward phase of model construction.  The true (population)
+r-squared value is also plotted.
 
 ````julia
-p = plot(md3.nterms, gr2(md3), label=L"Estimated $r^2$", size=(400, 300),
+p = plot(md4.nterms, gr2(md4), label=L"Estimated $r^2$", size=(400, 300),
          xlabel="Number of terms", ylabel=L"$r^2$")
-p = plot!(p, md3.nterms, cor(Ey, y)^2*ones(length(md3.nterms)), label=L"True $r^2$")
+p = plot!(p, md4.nterms, cor(Ey, y)^2*ones(length(md4.nterms)), label=L"True $r^2$")
 Plots.savefig(p, "../assets/readme5.svg")
 ````
 
