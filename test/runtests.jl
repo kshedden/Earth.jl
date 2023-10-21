@@ -45,9 +45,10 @@ end
     X = randn(rng, n, 3)
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
-    m = fit(EarthModel, X, y; maxit=3, knots=20, prune=false)
+    cfg = EarthConfig(; maxit=3)
+    m = fit(EarthModel, X, y; config=cfg, prune=false)
 
-    @test isapprox(mean(m.resid.^2), 1, atol=0.01, rtol=0.02)
+    @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.02)
 
     # Test that the columns of U are orthogonal
     U = hcat(m.U...)
@@ -80,8 +81,10 @@ end
     X = randn(rng, n, 3)
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
-    m = fit(EarthModel, X, y; maxit=3, knots=20, prune=true, verbose=true)
-    @test isapprox(mean(m.resid.^2), 1, atol=0.01, rtol=0.02)
+    cfg = EarthConfig(; maxit=3, refit=:ols)
+    m = fit(EarthModel, X, y; config=cfg, prune=true, verbose=true)
+    @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.02)
+    println(m) #DEBUG
 
     # Check that D spans the intended subspace
     D = hcat(m.D...)
@@ -90,9 +93,9 @@ end
     XX, _, _ = svd(XX)
     @test isapprox(sum(svd(XX'*D1).S), 3, rtol=0.01, atol=0.01)
 
-    # Check the residuals
+    # Check the residuals (under OLS refit)
     resid = y - D1 * (D1' * y)
-    @test isapprox(resid, m.resid)
+    @test isapprox(resid, residuals(m))
 end
 
 @testset "Basic constraints" begin
@@ -105,8 +108,9 @@ end
 
     constraints = Set([[0, 1, 0], [0, 0, 1], [0, 1, 1]])
 
-    m = fit(EarthModel, X, y; maxit=3, knots=100, constraints=constraints, prune=true)
-    @test isapprox(std(m.resid), 1, atol=0.01, rtol=0.02)
+    cfg = EarthConfig(; maxit=3, num_knots=100, constraints=constraints)
+    m = fit(EarthModel, X, y; config=cfg, prune=true)
+    @test isapprox(std(residuals(m)), 1, atol=0.01, rtol=0.02)
 
     # Check that D spans the intended subspace
     D = hcat(m.D...)
@@ -124,8 +128,10 @@ end
     X = randn(rng, n, 3)
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
-    m1 = fit(EarthModel, X, y; maxorder=1)
-    m2 = fit(EarthModel, X, y; maxorder=2)
+    config = EarthConfig(; maxorder=1)
+    m1 = fit(EarthModel, X, y; config=config)
+    config = EarthConfig(; maxorder=2)
+    m2 = fit(EarthModel, X, y; config=config)
     @test maximum(Earth.order(m1)) == 1
     @test maximum(Earth.order(m2)) == 2
 end
@@ -138,8 +144,10 @@ end
     X = randn(rng, n, 3)
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
-    m1 = fit(EarthModel, X, y; maxdegree=1)
-    m2 = fit(EarthModel, X, y; maxdegree=2)
+    cfg = EarthConfig(; maxdegree=1)
+    m1 = fit(EarthModel, X, y; config=cfg)
+    cfg = EarthConfig(; maxdegree=2)
+    m2 = fit(EarthModel, X, y; config=cfg)
     @test maximum(Earth.degree(m1)) == 1
     @test maximum(Earth.degree(m2)) == 2
 end
@@ -152,33 +160,12 @@ end
     X = randn(rng, n, 3)
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
-    for prune in [false]
-        m = fit(EarthModel, X, y; maxit=3, knots=100, prune=prune, verbose=false)
+    for prune in [false, true]
+        cfg = EarthConfig(; maxit=4, num_knots=100)
+        m = fit(EarthModel, X, y; config=cfg, prune=prune, verbose=false)
         yhat1 = predict(m)
         yhat2 = predict(m, X)
         @test isapprox(yhat1, yhat2)
-    end
-end
-
-@testset "Categorical" begin
-
-    rng = StableRNG(123)
-
-    n = 1000
-    X = [randn(rng, n), CategoricalArray(rand(rng, ["a", "b"], n)),
-         CategoricalArray(rand(rng, [1, 2, 3], n))]
-    y = X[1] + X[1] .* (X[2] .== "b") + (X[2] .== "a") .* (X[3] .== 3) + randn(rng, n)
-
-    Xvec = X
-    Xtup = tuple(X...)
-    Xnt = (x1=X[1], x2=X[2], x3=X[3])
-    Xdf = DataFrame(X, :auto)
-
-    for X in [Xvec, Xtup, Xnt, Xdf]
-        m = fit(EarthModel, X, y; maxit=5)
-        io = IOBuffer()
-        println(io, m)
-        @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
     end
 end
 
@@ -193,7 +180,8 @@ end
     y = x1 .* clamp.(x1 .- 1, 0, Inf) + x2 .* clamp.(1 .- x2, -Inf, 0) + 0.25*randn(rng, n)
     X = (x1=x1, x2=x2)
 
-    m = fit(EarthModel, X, y; maxorder=1)
+    cfg = EarthConfig(; maxorder=1)
+    m = fit(EarthModel, X, y; config=cfg)
 
     z = range(-3, 3, 100)
     y1 = predict(m, (x1=z, x2=zeros(100)))
@@ -203,4 +191,27 @@ end
     y2 = predict(m, (x1=zeros(100), x2=z))
     y2x = z .* clamp.(1 .- z, -Inf, 0)
     @test mean(abs.(y2 - y2x)) < 0.05
+end
+
+@testset "Categorical" begin
+
+    rng = StableRNG(123)
+
+    n = 5000
+    X = [randn(rng, n), CategoricalArray(rand(rng, ["a", "b"], n)),
+         CategoricalArray(rand(rng, [1, 2, 3], n))]
+    y = X[1] + X[1] .* (X[2] .== "b") + (X[2] .== "a") .* (X[3] .== 3) + randn(rng, n)
+
+    Xvec = X
+    Xtup = tuple(X...)
+    Xnt = (x1=X[1], x2=X[2], x3=X[3])
+    Xdf = DataFrame(X, :auto)
+
+    for X in [Xvec, Xtup, Xnt, Xdf]
+        cfg = EarthConfig(; maxit=5)
+        m = fit(EarthModel, X, y; config=cfg, verbose=true)
+        io = IOBuffer()
+        println(io, m)
+        @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
+    end
 end
