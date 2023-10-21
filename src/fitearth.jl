@@ -394,6 +394,10 @@ function build_design(cols, levs, nams)
         if eltype(c) <: Real
             push!(A, Float64.(c))
         elseif eltype(c) <: CategoricalValue
+            u = setdiff(Set(unique(c)), Set(levs[j]))
+            if length(u) > 0
+                error("Unknown levels in $(a): ", u)
+            end
             nams[j] = ["$(a)::$(x)" for x in levs[j]]
             push!(A, (levs[j] .== permutedims(c))')
         else
