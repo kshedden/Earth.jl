@@ -8,7 +8,7 @@ ENV["GKSwstype"] = "nul" #hide
 using Plots
 
 R"
-install.packages('AmesHousing')
+install.packages('AmesHousing', repos='https://cloud.r-project.org')
 library(AmesHousing)
 D = make_ames()
 "
@@ -26,7 +26,8 @@ names(X)
 
 # Fit a model and inspect its structure
 
-m = fit(EarthModel, X, y; maxit=40, maxorder=1, verbose=true)
+cfg = EarthConfig(; maxit=40, maxorder=1)
+m = fit(EarthModel, X, y; config=cfg, verbose=true)
 
 # Next we generate a plot showing the generalized R2 as we increase the number of terms
 

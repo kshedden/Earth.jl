@@ -15,6 +15,7 @@ using Downloads
 using Earth
 using Plots
 using ReadStatTables
+using Statistics
 
 dfile = "assets/nhanes2017.csv.gz";
 
@@ -70,6 +71,7 @@ da[!, :RIAGENDR] = CategoricalArray(da[:, :RIAGENDR]);
 # Define the response variable as a float vector:
 
 y = da[:, :BPXSY1];
+y = (y .- mean(y)) ./ std(y)
 
 # Construct the covariates as a named tuple:
 
@@ -78,20 +80,21 @@ X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR]
 # Fit an additive model, limiting the order and degree of each
 # term to 1.  Note that each term only involves a single covariate.
 
-m1 = fit(EarthModel, X, y; verbose=true, maxorder=1, maxdegree=1)
+cfg = EarthConfig(; maxorder=1, maxdegree=1)
+m1 = fit(EarthModel, X, y; config=cfg, verbose=true)
 
 # Fit another model that allows nonlinear main effects and two-way
 # interactions.
 
-m2 = fit(EarthModel, X, y; verbose=true, maxorder=2, maxdegree=1)
+cfg = EarthConfig(; maxorder=2, maxdegree=1)
+m2 = fit(EarthModel, X, y; config=cfg, verbose=true)
 
 # Get the adjusted r-squared sequences for each model.
 
 r2_1 = gr2(m1)
 r2_2 = gr2(m2)
-m = length(r2_1)
-p = plot(1:m, r2_1, xlabel="Number of terms", ylabel="R2", label="1")
-plot!(p, 1:m, r2_2, label="2")
+p = plot(m1.nterms, r2_1, xlabel="Number of terms", ylabel="R2", label="maxorder=1")
+plot!(p, m2.nterms, r2_2, label="maxorder=2")
 Plots.savefig(p, "./assets/nhanes1.svg");
 
 # ![R-squares](assets/nhanes1.svg)

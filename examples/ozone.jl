@@ -6,12 +6,12 @@ using Plots
 using Printf
 
 R"
-install.packages('earth')
+install.packages('earth', repos='https://cloud.r-project.org')
 library(earth)
 D = ozone1
 "
 
-ozone = @rget D
+ozone = @rget D;
 
 # The response variable is a vector of Float64 type.
 
@@ -25,19 +25,21 @@ X = NamedTuple{na}(eachcol(X))
 
 # Fit an additive model with degree 1
 
-m1 = fit(EarthModel, X, y; maxit=30, verbose=true, maxdegree=1, maxorder=1)
+cfg = EarthConfig(; maxit=30, maxdegree=1, maxorder=1)
+m1 = fit(EarthModel, X, y; config=cfg, verbose=true)
 
 # Fit a model with degree 1 that allows pairwise interactions
 
-m2 = fit(EarthModel, X, y; maxit=30, verbose=true, maxdegree=1, maxorder=2)
+cfg = EarthConfig(; maxit=30, maxdegree=1, maxorder=2)
+m2 = fit(EarthModel, X, y; config=cfg, verbose=true)
 
 # Get the generalized R2 statistics for each model
 
 r2_1 = gr2(m1)
-r2_2 = gr2(m1);
+r2_2 = gr2(m2);
 
-p = plot(1:length(r2_1), r2_1, xlabel="Number of terms", ylabel="R2", label="1")
-plot!(p, 1:length(r2_2), r2_2, label="2")
+p = plot(eachindex(r2_1), r2_1, xlabel="Number of terms", ylabel="R2", label="maxorder=1")
+plot!(p, eachindex(r2_2), r2_2, label="maxorder=2")
 Plots.savefig(p, "./assets/ozone1.svg");
 
 # Estimate the conditional mean function with respect to one variable `xvar`, fixing

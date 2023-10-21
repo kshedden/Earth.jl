@@ -35,7 +35,8 @@ y = Ey + randn(rng, n);
 # allow Earth to exactly represent the true mean structure in this
 # example.
 
-md1 = fit(EarthModel, X, y; maxorder=1)
+cfg = EarthConfig(; maxorder=1)
+md1 = fit(EarthModel, X, y; config=cfg, verbose=true)
 
 # To visualize how well we have fit the mean structure, we can consider
 # the fitted conditional mean of Y as a function of x1, holding
@@ -72,7 +73,8 @@ Plots.savefig(p, "../assets/readme2.svg")
 # In spite of the added flexibility, we still do a good job
 # capturing the mean structure.
 
-md2 = fit(EarthModel, X, y; maxorder=2, maxdegree=2)
+cfg = EarthConfig(; maxorder=2, maxdegree=2)
+md2 = fit(EarthModel, X, y; config=cfg)
 
 x = -2:0.2:2
 X1 = [x zeros(length(x)) zeros(length(x))]
@@ -120,7 +122,7 @@ function make_plot(md)
         else
             plot!(p, x, x.^2 + f*x, color=cols[j], label=L"$E[y | x_1, x_2=%$f]$")
         end
-        plot!(p, x, yp, color=cols[j], label=L"$\hat{E}[y | x_1, x_2=%$f]$")
+        plot!(p, x, yp, color=cols[j], ls=:dash, label=L"$\hat{E}[y | x_1, x_2=%$f]$")
     end
     Plots.savefig(p, "../assets/readme4.svg")
 end
