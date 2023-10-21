@@ -10,6 +10,9 @@ to the original MARS procedure.  The original MARS used backward
 selection for model pruning, but this implementation uses the Lasso,
 which was not invented yet at the time that MARS was conceived.
 
+See the [examples](examples) folder for additional examples of using
+Earth to build regression models.
+
 ## Usage
 
 The following example has three explanatory variables (x1, x2, x3)
