@@ -16,7 +16,7 @@ ozone = @rget D;
 # The response variable is a vector of Float64 type.
 
 y = Vector(D[:, :O3])
-X = select(D, Not(:O3))
+X = select(D, Not(:O3));
 
 # Create a named tuple of the variables.
 

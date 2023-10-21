@@ -32,8 +32,7 @@ m = fit(EarthModel, X, y; config=cfg, verbose=true)
 # Next we generate a plot showing the generalized R2 as we increase the number of terms
 
 r2 = gr2(m)
-p = plot(1:length(r2), r2, xlabel="Number of terms", ylabel="R2")
-plot!(p, 1:length(r2), r2, label="2")
+p = plot(m.nterms, r2, xlabel="Number of terms", ylabel="R2")
 Plots.savefig(p, "./assets/ames1.svg");
 
 # ![R-squares](assets/ames1.svg)
