@@ -209,9 +209,9 @@ end
 
 function predict(E::EarthModel, X)
 
-    (; levels, vnames, meany, sdy, meanx, sdx) = E
+    (; levels, meany, sdy, meanx, sdx) = E
 
-    cols, _, _ = handle_covars(X)
+    cols, _, vnames = handle_covars(X)
     _, X = build_design(cols, levels, vnames)
 
     # Standardize using the mean/sd parameters
@@ -375,10 +375,11 @@ end
 # design matrix and a vector of column names.  Categorical columns
 # are expanded to indicator arrays, and names for each indicator
 # column are constructed.
-function build_design(cols, levs, nams)
+function build_design(cols, levs, vnames)
 
-    # Prepare to insert the expanded names into nams
-    nams = Vector{Any}(nams)
+    # Prepare to insert the expanded names into vnames
+    newnames = Vector{Any}(deepcopy(vnames))
+    vnames = deepcopy(vnames)
 
     A = []
     n = length(first(cols))
@@ -389,16 +390,16 @@ function build_design(cols, levs, nams)
 
         # The variable name, which is also the column name for numeric columns.
         # For non-numeric columns, this becomes the root of the indicator name.
-        a = nams[j]
+        a = vnames[j]
 
         if eltype(c) <: Real
             push!(A, Float64.(c))
         elseif eltype(c) <: CategoricalValue
             u = setdiff(Set(unique(c)), Set(levs[j]))
             if length(u) > 0
-                error("Unknown levels in $(a): ", u)
+                error("Unknown levels in $(vnames[j]): ", join(u, ", "))
             end
-            nams[j] = ["$(a)::$(x)" for x in levs[j]]
+            newnames[j] = ["$(a)::$(x)" for x in levs[j]]
             push!(A, (levs[j] .== permutedims(c))')
         else
             error("Unknown type `$(eltype(c))` for covariate $(j)")
@@ -406,9 +407,9 @@ function build_design(cols, levs, nams)
     end
 
     # Flatten the names vector
-    nams = reduce(vcat, nams)
+    newnames = reduce(vcat, newnames)
 
-    return nams, hcat(A...)
+    return newnames, hcat(A...)
 end
 
 
@@ -440,6 +441,9 @@ Ann. Statist. 19(1): 1-67 (March, 1991). DOI: 10.1214/aos/1176347963
 https://projecteuclid.org/journals/annals-of-statistics/volume-19/issue-1/Multivariate-Adaptive-Regression-Splines/10.1214/aos/1176347963.full
 """
 function fit(EarthModel, X, y; config::EarthConfig=EarthConfig(), prune=true, verbose=false)
+
+    # X will be mutated
+    X = deepcopy(X)
 
     cols, levs, nams = handle_covars(X)
     vnames, X = build_design(cols, levs, nams)

@@ -213,5 +213,24 @@ end
         io = IOBuffer()
         println(io, m)
         @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
+        predict(m)
+        predict(m, X)
+
+        # Check that an error is thrown if the data for prediction
+        # contains levels of a categorical variable that are not
+        # in the training data.
+        let err = nothing
+            X = deepcopy(X)
+            if typeof(X) <: AbstractDataFrame
+                X[1, 2] = "z"
+            else
+                X[2][1] = "z"
+            end
+            try
+                predict(m, X)
+            catch err
+            end
+            @test err isa Exception
+        end
     end
 end
