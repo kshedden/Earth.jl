@@ -74,13 +74,17 @@ mutable struct EarthConfig
     # than this number in absolute value.
     min_coef::Float64
 
+    prune::Bool
+
     # After pruning, how to refit the coefficients
     refit::Symbol
 end
 
 
 """
-TODO function signature
+    EarthConfig(; constraints=Set{Vector{Bool}}(), num_knots=20, maxit=10, maxorder=2, maxdegree=2,
+                knot_penalty=ifelse(maxorder>1, 3, 2), min_r2=0.001, min_coef=0.01,
+                prune::Bool=true, refit::Symbol=:lasso)
 
 # Keyword arguments
 
@@ -88,17 +92,17 @@ TODO function signature
 - `maxit`: The number of basis construction iterations.
 - `constraints`: A set of bit vectors that constrain the combinations of variables that can be used to produce a term.
 - `prune`: If false, perform the basis construction step but do not perform the pruning step.
-- `verbose`: Print some information as the fitting algorithm runs.
 - `maxorder`: The maximum number of distinct variables that can be present in a single term.
 - `maxdegree`: The maximum number of hinges for a single variable that can occur in one term
 - `knot_penalty`: A parameter that controls how easily a new term can enter the model.
 - `min_r2`: Terminate the forward pass if the increase in R2 falls below this value.
 - `min_coef`: Terms with standardized coefficient falling below this value are pruned.
+- `prune`: If true, prune the model using the Lasso.
 - `refit`: After pruning, refit the model using either lasso (:lasso) or OLS (:ols).
 """
 function EarthConfig(; constraints=Set{Vector{Bool}}(), num_knots=20, maxit=10, maxorder=2, maxdegree=2,
                        knot_penalty=ifelse(maxorder>1, 3, 2), min_r2=0.001, min_coef=0.01,
-                       refit::Symbol=:lasso)
+                       prune::Bool=true, refit::Symbol=:lasso)
 
     # The num_knots argument can be either scalar or vector.  Here construct
     # num_knotsv that is always a vector.  Since we don't know the number
@@ -112,7 +116,7 @@ function EarthConfig(; constraints=Set{Vector{Bool}}(), num_knots=20, maxit=10, 
     end
 
     return EarthConfig(maxit, maxorder, maxdegree, num_knotsv, knot_penalty, constraints,
-                       min_r2, min_coef, refit)
+                       min_r2, min_coef, prune, refit)
 end
 
 mutable struct EarthModel
@@ -152,6 +156,9 @@ mutable struct EarthModel
 
     # The response
     y::Vector{Float64}
+
+    # Observation weights
+    weights::Vector{Float64}
 
     # The mean of y
     meany::Float64
@@ -265,7 +272,7 @@ end
 # If `x` has no more than `n_knots` distinct values, these distinct
 # values are the knots.  Otherwise the knots lie on quantiles of `x`
 # corresponding to `n_knots` equi-spaced probability points.
-function get_knots(x::AbstractVector{<:Real}, n_knots::Int)
+function get_knots(x::AbstractVector{<:Real}, n_knots::Int, weights::AbstractVector{<:Real})
 
     u = unique(x)
     sort!(u)
@@ -273,12 +280,12 @@ function get_knots(x::AbstractVector{<:Real}, n_knots::Int)
         return u
     end
     pp = range(0, 1, n_knots)
-    return Float64[quantile(x, p) for p in pp]
+    return Float64[quantile(x, weights, p) for p in pp]
 end
 
 # Constructor
 function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, config::EarthConfig;
-                    vnames::Vector{<:AbstractString}=[], levels::Vector=[])
+                    weights::Vector{<:Real}=[], vnames::Vector{<:AbstractString}=[], levels::Vector=[])
     n, p = size(X)
     if length(y) != n
         throw(ArgumentError("The length of y must match the leading dimension of X."))
@@ -301,8 +308,8 @@ function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, config
 
     # Standardize y, the iterative orthogonalizations used in fitting Earth
     # models exhibit a lot of roundoff error if y is not well-scaled.
-    mny = mean(y)
-    sdy = std(y)
+    mny = wmean(y, weights)
+    sdy = wstd(y, weights)
     y = (y .- mny) ./ sdy
 
     # Always start with an intercept
@@ -311,31 +318,34 @@ function EarthModel(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, config
     bmask = zeros(Bool, p)
     term = EarthTerm(Hinge[icept,], vmask, bmask)
 
-    # Fitted values based on the intercept-only model
-    yhat = mean(y) * ones(n)
+    # Since we have centered y, the initial fitted values
+    # are zero.
+    yhat = zeros(n)
     resid = y - yhat
 
     # Standardize columns of X
-    mnx = mean(X; dims=1)[:]
-    sdx = std(X; dims=1)[:]
+    mnx = zeros(p)
+    sdx = zeros(p)
     for j in 1:size(X, 2)
+        mnx[j] = wmean(X[:, j], weights)
+        sdx[j] = wstd(X[:, j], weights)
         X[:, j] = (X[:, j] .- mnx[j]) ./ sdx[j]
     end
 
     # Get the knots for each variable.
-    knots = [get_knots(x, knot) for (x, knot) in zip(eachcol(X), config.num_knots)]
+    knots = [get_knots(x, knot, StatsBase.weights(weights)) for (x, knot) in zip(eachcol(X), config.num_knots)]
 
     # Setup an initial basis consisting only of the intercept
     z = ones(n)
     D = [z]
-    U = [z ./ sqrt(n)]
+    U = [z ./ sqrt(wss(z, weights))]
     edof = Float64[1]
-    rss = Float64[sum(abs2, resid)]
+    rss = Float64[wss(resid, weights)]
     nterms = Int[1]
 
     return EarthModel(config, EarthTerm[term], D, U, resid, knots, [],
-                      rss, edof, nterms, X, y, mny, sdy, mnx, sdx, vnames,
-                      levels)
+                      rss, edof, nterms, X, y, weights, mny, sdy, mnx,
+                      sdx, vnames, levels)
 end
 
 # Returns a column iterator, a vector of levels, and a vector of names based on the
@@ -412,9 +422,21 @@ function build_design(cols, levs, vnames)
     return newnames, hcat(A...)
 end
 
+function handle_weights(weights, X, y)
+
+    if length(weights) == 0
+        return ones(length(y))
+    end
+
+    if length(weights) != length(y)
+        error("Length of `weights` $(length(weights)) should be zero, or should equal the length of `y` $(length(y)).")
+    end
+
+    return weights
+end
 
 """
-    fit(EarthModel, X, y; config::EarthConfig=EarthConfig(), prune=true, verbose=false)
+    fit(EarthModel, X, y; config::EarthConfig=EarthConfig(), prune=true, verbosity=0)
 
 Fit a regression model using an approach similar to Friedman's 1991
 MARS procedure (also known as Earth for trademark reasons).  The
@@ -439,8 +461,14 @@ References:
 Friedman (1991) "Multivariate Adaptive Regression Splines".
 Ann. Statist. 19(1): 1-67 (March, 1991). DOI: 10.1214/aos/1176347963
 https://projecteuclid.org/journals/annals-of-statistics/volume-19/issue-1/Multivariate-Adaptive-Regression-Splines/10.1214/aos/1176347963.full
+
+# Keyword arguments
+
+- `weights`: optional case weights
+- `config`: permits configuration of many tuning parameters
+- `verbosity`: Print some information as the fitting algorithm runs
 """
-function fit(EarthModel, X, y; config::EarthConfig=EarthConfig(), prune=true, verbose=false)
+function fit(EarthModel, X, y; weights=[], config::EarthConfig=EarthConfig(), verbosity::Integer=0)
 
     # X will be mutated
     X = deepcopy(X)
@@ -448,34 +476,42 @@ function fit(EarthModel, X, y; config::EarthConfig=EarthConfig(), prune=true, ve
     cols, levs, nams = handle_covars(X)
     vnames, X = build_design(cols, levs, nams)
 
-    E = EarthModel(X, y, config; vnames=vnames, levels=levs)
-    fit!(E; prune=prune, verbose=verbose)
+    weights = handle_weights(weights, X, y)
+
+    E = EarthModel(X, y, config; weights=weights, vnames=vnames, levels=levs)
+    fit!(E; verbosity=verbosity)
     return E
 end
 
-function fit!(E::EarthModel; prune=true, verbose=verbose)
+function fit!(E::EarthModel; prune=true, verbosity=verbosity)
 
-    cfg = E.config
+    (; config, weights) = E
 
     # Basis construction
-    kp = 0
-    for k in 1:cfg.maxit
-        kp += k
-        rr = nextterm!(E)
-        if rr < cfg.min_r2
+    for k in 1:config.maxit
+
+        if verbosity > 0
+            println("Iteration $k")
+        end
+
+        rr = nextterm!(E; verbosity=verbosity)
+        if rr < config.min_r2
+            if verbosity > 1
+                println("Terminating forward pass due to insufficient increase in R^2: $(rr) < $(config.min_r2)")
+            end
             break
         end
-        if verbose
+        if verbosity > 0
             println(@sprintf("Increase in R^2: %.4f", rr))
         end
     end
 
     # Pruning
-    if prune
-        prune!(E; verbose=verbose)
+    if config.prune
+        prune!(E; verbosity=verbosity)
     else
         # Use all terms and estimate the coefficients using OLS
-        D = hcat(E.D...)
+        D = diagm(sqrt.(weights)) * hcat(E.D...)
         E.coef = qr(D) \ E.y
     end
 end
@@ -483,9 +519,10 @@ end
 # Replace z with its projection onto the orthogonal complement of the
 # subspace spanned by the columns in U.  Assumes that the columns in U
 # are orthonormal.
-function residualize!(U::Vector{Vector{Float64}}, z::Vector{Float64})
+function residualize!(U::Vector{Vector{Float64}}, z::Vector{Float64}, w::Vector{Float64})
     for u in U
-        z .-= dot(u, z) * u
+        c = wdot(u, z, w)
+        z .-= c * u
     end
 end
 
@@ -495,16 +532,16 @@ end
 # step.
 function checkstate(E::EarthModel)
 
-    (; y, X, D, resid) = E
+    (; y, X, D, resid, weights) = E
 
-    if abs(mean(resid)) > 1e-10
+    if abs(wmean(resid, weights)) > 1e-10
         error("residuals do not have mean zero")
     end
 
     DD = hcat(D...)
     yhat = DD * (qr(DD) \ y)
     resid1 = y - yhat
-    c = norm(resid1 - resid)
+    c = wnorm(resid1 - resid, weights)
     if c > 1e-10
         error("residuals do not agree: ", c)
     end
@@ -551,9 +588,11 @@ function addterm!(E::EarthModel, iterm::Int, h::Hinge, z::Vector{Float64})
     z = copy(z)
 
     # Add the unique component of the new term (the part
-    # that is orthogonal to all other terms in the model)
-    residualize!(E.U, z)
-    z ./= norm(z)
+    # that is orthogonal to all other terms in the model).
+    # Normalize the component to have unit norm in the
+    # weighted metric.
+    residualize!(E.U, z, E.weights)
+    z ./= sqrt(wss(z, E.weights))
     push!(E.U, z)
 end
 
@@ -566,26 +605,32 @@ end
 # the hinge functions.  A hinge function is not added if it is within
 # `qtol` of being identically zero, so the effect of this function is
 # to add 0, 1, or 2 hinge functions.
-function addtermpair!(E::EarthModel, iterm::Int, ivar::Int, icut::Int, qtol::Float64=1e-10)
+function addtermpair!(E::EarthModel, iterm::Int, ivar::Int, icut::Int;
+                      qtol::Float64=1e-10, verbosity::Int=0)
 
-    (; config) = E
+    (; config, weights) = E
     n = nobs(E)
     z1 = zeros(n)
     z2 = zeros(n)
     h1, h2 = mirrorbasis(E, iterm, ivar, icut, z1, z2)
 
     fitval = zeros(n)
-    t1, t2 = fitreg(E, copy(z1), copy(z2), fitval; qtol=qtol)
+    t1, t2 = fitreg(E, copy(z1), copy(z2), fitval; qtol=qtol, verbosity=verbosity)
     E.resid .-= fitval
 
     t1 && addterm!(E, iterm, h1, z1)
     t2 && addterm!(E, iterm, h2, z2)
 
+    if verbosity > 0
+        m = t1 + t2
+        println("Adding $(m) terms")
+    end
+
     push!(E.edof, last(E.edof) + t1 + t2 + (t1 || t2) * config.knot_penalty)
-    push!(E.rss, sum(abs2, E.resid))
+    push!(E.rss, wss(E.resid, weights))
     push!(E.nterms, length(E.D))
 
-    return sum(abs2, fitval) / length(E.y)
+    return wss(fitval, weights) / sum(weights)
 end
 
 # Construct a pair of mirror image hinge functions.  The term with
@@ -612,33 +657,64 @@ function mirrorbasis(E::EarthModel, iterm::Int, ivar::Int, icut::Int,
     return h1, h2
 end
 
+# Weighted mean of `x` using weights in `w`.
+function wmean(x, w)
+    return sum(v->v[1]*v[2], zip(w, x)) / sum(w)
+end
+
+# Weighted dot product between `x` and `y`, using weights in `w`.
+function wdot(x, y, w)
+    return sum(v->v[1]*v[2]*v[3], zip(w, x, y))
+end
+
+# Weighted standard deviation of `y` using weights in `w`.
+function wstd(y, w)
+    mn = wmean(y, w)
+    ss = sum(v->v[1]*(v[2]-mn)^2, zip(w, y))
+    va = ss / sum(w)
+    return sqrt(va)
+end
+
+# Weighted sum of squares of `x`, using weights in `w`.
+function wss(x, w)
+    return sum(v->v[1]*v[2]^2, zip(w, x))
+end
+
+# Weighted norm of `x`, using weights in `w`.
+wnorm(x, w) = sqrt(wss(x, w))
+
 # Calculate fitted values for the residuals in a model that adds
 # variables `z1` and `z2` to the current model.  These variables are
 # only included if they have norm exceeding `qtol` when residualized
 # against all terms that are already in the model.  This function
 # returns updated fitted values (to the residual), and indicators of
 # whether each of the two new terms was used to determine the fit.
-function fitreg(E::EarthModel, z1, z2, fitval; qtol::Float64=1e-10)
+function fitreg(E::EarthModel, z1, z2, fitval; qtol::Float64=1e-10, verbosity::Int=0)
 
-    (; U, resid) = E
+    (; U, resid, weights) = E
 
-    n = length(z1)
     fitval .= 0
 
-    residualize!(E.U, z1)
-    residualize!(E.U, z2)
+    residualize!(U, z1, weights)
+    residualize!(U, z2, weights)
 
-    nz1 = norm(z1)
-    t1 = nz1 > qtol
+    ss1 = wss(z1, weights)
+    t1 = sqrt(ss1) > qtol
     if t1
-        fitval .+= z1 * dot(z1, resid) / nz1^2
-        z2 -= z1*dot(z1, z2) / dot(z1, z1)
+        fitval .+= z1 * wdot(z1, resid, weights) / ss1
+        z2 -= z1*wdot(z1, z2, weights) / wss(z1, weights)
     end
 
-    nz2 = norm(z2)
-    t2 = nz2 > qtol
+    ss2 = wss(z2, weights)
+    t2 = sqrt(ss2) > qtol
     if t2
-        fitval .+= z2 * dot(z2, resid) / nz2^2
+        fitval .+= z2 * wdot(z2, resid, weights) / ss2
+    end
+
+    if verbosity > 1
+        println("RSS: $(wss(resid, weights))")
+        println("Term 1: $(sqrt(ss1)) > $(qtol) is $(t1)")
+        println("Term 2: $(sqrt(ss2)) > $(qtol) is $(t2)")
     end
 
     return t1, t2
@@ -648,13 +724,12 @@ end
 function checkvar(E::EarthModel, iterm::Int, ivar::Int, icut::Int, z1::Vector{Float64},
                   z2::Vector{Float64}, fitval::Vector{Float64})
 
-    (; D, U, y, X, K, resid) = E
+    (; resid, weights) = E
 
-    n = nobs(E)
     h1, h2 = mirrorbasis(E, iterm, ivar, icut, z1, z2)
     fitreg(E, z1, z2, fitval)
 
-    return sum(abs2, resid - fitval)
+    return sum(u -> u[1]*(u[2]-u[3])^2, zip(weights, resid, fitval)) / sum(weights)
 end
 
 # Check if the given term can be added to the model.  A term cannot be
@@ -678,7 +753,7 @@ end
 
 # Add the next best-fitting basis term to the model.  Returns the
 # improvement in R^2 based on the term addition.
-function nextterm!(E::EarthModel)
+function nextterm!(E::EarthModel; verbosity::Int=0)
 
     (; config, Terms, K, X) = E
     n, p = size(X)
@@ -717,43 +792,49 @@ function nextterm!(E::EarthModel)
     end
 
     if ii != -1
-        return addtermpair!(E, ii, jj, kk)
+        return addtermpair!(E, ii, jj, kk; verbosity=verbosity)
+    elseif verbosity > 0
+        println("Failed to find term to add to model that improves R^2")
     end
 
     return 0.0
 end
 
 # Use the Lasso to drop irrelevant terms from the model.
-function prune!(E; verbose::Bool=false)
+function prune!(E; verbosity::Integer=0)
 
-    (; y, D, config) = E
+    (; y, D, config, weights) = E
 
+    # Special cases
     if length(D) == 0
         # This should never happen
-        verbose && println("Empty model")
+        verbosity > 0 && println("Empty model")
         return
     elseif length(D) == 1
-        verbose && println("No terms to prune")
-        E.coef = Float64[mean(y)]
-        E.resid .= y - mean(y)
+        verbosity > 0 && println("No terms to prune")
+        E.coef = Float64[wmean(y, weights)]
+        E.resid .= y - wmean(y, weights)
         return
     end
 
-    verbose && println("Pruning...")
+    verbosity > 0 && println("Pruning...")
 
     # Design matrix excluding the intercept
     X = hcat(D[2:end]...)
 
-    m = fit(LassoModel, X, y; select=MinBIC())
+    # Fit the lasso, don't standardize here since we have already standardized
+    m = fit(LassoModel, X, y; wts=weights, select=MinBIC(), standardize=false)
     c = Lasso.coef(m)
 
     # Drop the irrelevant terms, always keep the intercept.
-    sdx = std(X; dims=1)[:]
-    ii = 1 .+ findall(r->abs(r) > config.min_coef, c[2:end] .* sdx)
+    ii = 1 .+ findall(r->abs(r) > config.min_coef, c[2:end])
     ii = vcat(1, ii)
-    if verbose
+    if verbosity > 0
         b = length(c) - length(ii)
         println("Dropping $b terms using LASSO")
+        if verbosity > 1
+            println("Initial Lasso coefficients: ", c)
+        end
     end
     E.Terms = E.Terms[ii]
     E.D = E.D[ii]
@@ -762,10 +843,10 @@ function prune!(E; verbose::Bool=false)
     # Refit with OLS, including the intercept
     D = hcat(E.D...)
     if config.refit == :lasso
-        m = fit(LassoModel, D[:, 2:end], y; select=MinBIC())
+        m = fit(LassoModel, D[:, 2:end], y; wts=weights, select=MinBIC(), standardize=false)
         E.coef = Lasso.coef(m)
     elseif config.refit == :ols
-        E.coef = qr(D) \ y
+        E.coef = qr(diagm(sqrt.(weights)) * D) \ y
     else
         error("Invalid refit method '$(config.refit)' (must be either `:lasso` or `:ols`)")
     end
@@ -816,14 +897,14 @@ function Base.show(io::IO, t::EarthTerm; vnames=String[])
 end
 
 function Base.show(io::IO, E::EarthModel)
-    (; Terms, vnames, coef, D) = E
+    (; Terms, vnames, coef, D, weights) = E
     print(io, "     Coef    Std coef    Term\n")
     for (j, trm) in enumerate(Terms)
         print(io, @sprintf("%10.3f  ", coef[j]))
         if j == 1
             print(io, "     --      ")
         else
-            print(io, @sprintf("%10.3f   ", coef[j] * std(D[j])))
+            print(io, @sprintf("%10.3f   ", coef[j] * wstd(D[j], weights)))
         end
         show(io, trm; vnames=vnames)
         print(io, "\n")

@@ -33,7 +33,7 @@ y = Ey + randn(rng, n);
 # which will be discussed further below.
 
 cfg = EarthConfig(; maxorder=1)
-md1 = fit(EarthModel, X, y; config=cfg, verbose=true)
+md1 = fit(EarthModel, X, y; config=cfg, verbosity=1)
 
 # The representation of the model displayed above shows all of the
 # terms, and how each term is constructed as a product of hinges.  It

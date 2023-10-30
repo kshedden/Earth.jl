@@ -45,8 +45,8 @@ end
     X = randn(rng, n, 3)
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
-    cfg = EarthConfig(; maxit=3)
-    m = fit(EarthModel, X, y; config=cfg, prune=false)
+    cfg = EarthConfig(; maxit=3, prune=false)
+    m = fit(EarthModel, X, y; config=cfg)
 
     @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.02)
 
@@ -82,9 +82,8 @@ end
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
     cfg = EarthConfig(; maxit=3, refit=:ols)
-    m = fit(EarthModel, X, y; config=cfg, prune=true, verbose=true)
+    m = fit(EarthModel, X, y; config=cfg, verbosity=1)
     @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.02)
-    println(m) #DEBUG
 
     # Check that D spans the intended subspace
     D = hcat(m.D...)
@@ -109,7 +108,7 @@ end
     constraints = Set([[0, 1, 0], [0, 0, 1], [0, 1, 1]])
 
     cfg = EarthConfig(; maxit=3, num_knots=100, constraints=constraints)
-    m = fit(EarthModel, X, y; config=cfg, prune=true)
+    m = fit(EarthModel, X, y; config=cfg)
     @test isapprox(std(residuals(m)), 1, atol=0.01, rtol=0.02)
 
     # Check that D spans the intended subspace
@@ -161,8 +160,8 @@ end
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
     for prune in [false, true]
-        cfg = EarthConfig(; maxit=4, num_knots=100)
-        m = fit(EarthModel, X, y; config=cfg, prune=prune, verbose=false)
+        cfg = EarthConfig(; maxit=4, num_knots=100, prune=prune)
+        m = fit(EarthModel, X, y; config=cfg, verbosity=1)
         yhat1 = predict(m)
         yhat2 = predict(m, X)
         @test isapprox(yhat1, yhat2)
@@ -209,7 +208,7 @@ end
 
     for X in [Xvec, Xtup, Xnt, Xdf]
         cfg = EarthConfig(; maxit=5)
-        m = fit(EarthModel, X, y; config=cfg, verbose=true)
+        m = fit(EarthModel, X, y; config=cfg, verbosity=1)
         io = IOBuffer()
         println(io, m)
         @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
@@ -233,4 +232,37 @@ end
             @test err isa Exception
         end
     end
+end
+
+@testset "Test weights" begin
+
+    rng = StableRNG(123)
+
+    n = 1000
+    x1 = randn(rng, n)
+    x2 = randn(rng, n)
+
+    y = x1 .* clamp.(x1 .- 1, 0, Inf) + x2 .* clamp.(1 .- x2, -Inf, 0) + 0.25*randn(rng, n)
+    X = (x1=x1, x2=x2)
+
+    # The first 500 observations, no weights
+    y0 = y[1:500]
+    X0 = (x1=x1[1:500], x2=x2[1:500])
+    cfg = EarthConfig()
+    m0 = fit(EarthModel, X0, y0; config=cfg, verbosity=0)
+    y0_pred = predict(m0)
+
+    # All observations, but place zero weight on the second half of data
+    w = ones(length(y))
+    w[501:end] .= 0
+    mw = fit(EarthModel, X, y; weights=w, config=cfg, verbosity=0)
+    y_pred = predict(mw)
+
+    @assert isapprox(m0.meanx, mw.meanx)
+    @assert isapprox(m0.sdx, mw.sdx)
+    @assert isapprox(m0.meany, mw.meany)
+    @assert isapprox(m0.sdy, mw.sdy)
+
+    println(mean(abs.(y0_pred - y_pred[1:500])))
+    @assert isapprox(y0_pred, y_pred[1:500])
 end

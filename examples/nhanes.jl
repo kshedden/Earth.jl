@@ -71,7 +71,7 @@ da[!, :RIAGENDR] = CategoricalArray(da[:, :RIAGENDR]);
 # Define the response variable as a float vector:
 
 y = da[:, :BPXSY1];
-y = (y .- mean(y)) ./ std(y)
+y = (y .- mean(y)) ./ std(y);
 
 # Construct the covariates as a named tuple:
 
@@ -81,13 +81,13 @@ X = (RIDAGEYR=da[:, :RIDAGEYR], BMXBMI=da[:, :BMXBMI], RIAGENDR=da[:, :RIAGENDR]
 # term to 1.  Note that each term only involves a single covariate.
 
 cfg = EarthConfig(; maxorder=1, maxdegree=1)
-m1 = fit(EarthModel, X, y; config=cfg, verbose=true)
+m1 = fit(EarthModel, X, y; config=cfg, verbosity=1)
 
 # Fit another model that allows nonlinear main effects and two-way
 # interactions.
 
 cfg = EarthConfig(; maxorder=2, maxdegree=1)
-m2 = fit(EarthModel, X, y; config=cfg, verbose=true)
+m2 = fit(EarthModel, X, y; config=cfg, verbosity=1)
 
 # Get the adjusted r-squared sequences for each model.
 
@@ -114,7 +114,7 @@ end;
 
 # The plot below shows the estimated conditional mean blood
 # pressure values for non-hispanic black females, at three
-# levels of BMI.
+# levels of BMI, in an additive model.
 
 age, sbp = sbp_by_age(m1; bmi=25)
 p = plot(age, sbp, xlabel="Age", ylabel="SBP", label="BMI=25")
@@ -125,6 +125,8 @@ plot!(p, age, sbp, label="BMI=35")
 Plots.savefig(p, "./assets/nhanes2.svg");
 
 # ![Fitted means](assets/nhanes2.svg)
+
+# Below we perform the same analysis as above, but here allowing two-way interactions.
 
 age, sbp = sbp_by_age(m2; bmi=25)
 p = plot(age, sbp, xlabel="Age", ylabel="SBP", label="BMI=25")

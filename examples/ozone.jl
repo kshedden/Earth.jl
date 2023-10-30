@@ -26,12 +26,12 @@ X = NamedTuple{na}(eachcol(X))
 # Fit an additive model with degree 1
 
 cfg = EarthConfig(; maxit=30, maxdegree=1, maxorder=1)
-m1 = fit(EarthModel, X, y; config=cfg, verbose=true)
+m1 = fit(EarthModel, X, y; config=cfg, verbosity=1)
 
 # Fit a model with degree 1 that allows pairwise interactions
 
 cfg = EarthConfig(; maxit=30, maxdegree=1, maxorder=2)
-m2 = fit(EarthModel, X, y; config=cfg, verbose=true)
+m2 = fit(EarthModel, X, y; config=cfg, verbosity=1)
 
 # Get the generalized R2 statistics for each model
 

@@ -27,7 +27,7 @@ names(X)
 # Fit a model and inspect its structure
 
 cfg = EarthConfig(; maxit=40, maxorder=1)
-m = fit(EarthModel, X, y; config=cfg, verbose=true)
+m = fit(EarthModel, X, y; config=cfg, verbosity=1)
 
 # Next we generate a plot showing the generalized R2 as we increase the number of terms
 

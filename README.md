@@ -35,24 +35,22 @@ which will be discussed further below.
 
 ````julia
 cfg = EarthConfig(; maxorder=1)
-md1 = fit(EarthModel, X, y; config=cfg, verbose=true)
+md1 = fit(EarthModel, X, y; config=cfg, verbosity=1)
 ````
 
 ````
      Coef    Std coef    Term
-    -2.617       --      intercept
-    -1.557      -0.787   intercept * h(v1 - 0.205)
-     1.790       1.182   intercept * h(0.205 - v1)
-    -0.444      -0.236   intercept * h(v2 - 0.171)
-     0.622       0.403   intercept * h(0.171 - v2)
-     1.193       1.074   intercept * h(v1 - -1.246)
-     0.429       0.848   intercept * h(v1 - -1.246) * h(v1 - -0.199)
-    -0.050      -0.042   intercept * h(v3 - -0.993)
-    -0.120      -0.033   intercept * h(-0.993 - v3)
-     0.018       0.037   intercept * h(v3 - -0.993) * h(v3 - -0.632)
-     7.630       0.053   intercept * h(v3 - -0.993) * h(-0.632 - v3)
-    -2.372      -0.020   intercept * h(0.171 - v2) * h(v2 - -0.175)
-    -0.037      -0.045   intercept * h(0.171 - v2) * h(-0.175 - v2)
+    -2.550       --      intercept
+    -1.529      -0.773   intercept * h(v1 - 0.206)
+     1.776       1.173   intercept * h(0.206 - v1)
+    -0.425      -0.226   intercept * h(v2 - 0.171)
+     0.648       0.420   intercept * h(0.171 - v2)
+     1.181       1.063   intercept * h(v1 - -1.247)
+     0.426       0.842   intercept * h(v1 - -1.247) * h(v1 - -0.199)
+    -0.126      -0.107   intercept * h(v3 - -0.994)
+    -0.197      -0.055   intercept * h(-0.994 - v3)
+     0.038       0.081   intercept * h(v3 - -0.994) * h(v3 - -0.633)
+    -0.045      -0.055   intercept * h(0.171 - v2) * h(-0.175 - v2)
 
 ````
 
@@ -149,22 +147,19 @@ md3 = fit(EarthModel, X, y; config=cfg)
 
 ````
      Coef    Std coef    Term
-    -2.656       --      intercept
-    -1.491      -0.754   intercept * h(v1 - 0.205)
-     1.769       1.168   intercept * h(0.205 - v1)
-    -0.371      -0.197   intercept * h(v2 - 0.171)
-     0.618       0.401   intercept * h(0.171 - v2)
-     1.156       1.040   intercept * h(v1 - -1.246)
-     0.451       0.893   intercept * h(v1 - -1.246) * h(v1 - -0.199)
-     0.000       0.000   intercept * h(v1 - 0.205) * h(v2 - -0.746)
-    -0.405      -0.076   intercept * h(v1 - 0.205) * h(-0.746 - v2)
-    -0.054      -0.048   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(v1 - 0.784)
-    -0.734      -0.025   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(0.784 - v1)
-    -0.431      -0.023   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(0.784 - v1) * h(v2 - 0.283)
-    11.235       0.033   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(0.784 - v1) * h(0.283 - v2)
-    -0.084      -0.023   intercept * h(-0.993 - v3)
-     8.663       0.060   intercept * h(v3 - -0.993) * h(-0.632 - v3)
-   -68.573      -0.029   intercept * h(v1 - 0.205) * h(v2 - -0.746) * h(v1 - 0.784) * h(-0.613 - v2)
+    -2.619       --      intercept
+    -1.637      -0.828   intercept * h(v1 - 0.206)
+     1.796       1.186   intercept * h(0.206 - v1)
+    -0.380      -0.202   intercept * h(v2 - 0.171)
+     0.615       0.399   intercept * h(0.171 - v2)
+     1.210       1.089   intercept * h(v1 - -1.247)
+     0.468       0.926   intercept * h(v1 - -1.247) * h(v1 - -0.199)
+    -0.351      -0.066   intercept * h(v1 - 0.206) * h(-0.747 - v2)
+    -0.049      -0.043   intercept * h(v1 - 0.206) * h(v2 - -0.747) * h(v1 - 0.784)
+    -0.833      -0.044   intercept * h(v1 - 0.206) * h(v2 - -0.747) * h(0.784 - v1) * h(v2 - 0.283)
+    -0.115      -0.098   intercept * h(v3 - -0.994)
+    -0.200      -0.055   intercept * h(-0.994 - v3)
+     0.037       0.079   intercept * h(v3 - -0.994) * h(v3 - -0.633)
 
 ````
 
@@ -187,23 +182,15 @@ md4 = fit(EarthModel, X, y)
 
 ````
      Coef    Std coef    Term
-    -0.522       --      intercept
-    -0.389      -0.237   intercept * h(0.052 - v1)
-     0.485       0.376   intercept * h(v1 - 0.052) * h(v2 - -0.799)
-    -0.481      -0.104   intercept * h(v1 - 0.052) * h(-0.799 - v2)
-    -0.398      -0.071   intercept * h(0.052 - v1) * h(v2 - 1.253)
-     0.478       0.464   intercept * h(0.052 - v1) * h(1.253 - v2)
-     8.676       0.086   intercept * h(0.052 - v1) * h(v1 - -0.334)
-     0.470       0.494   intercept * h(0.052 - v1) * h(-0.334 - v1)
-     0.371       0.321   intercept * h(v1 - 0.052) * h(v1 - 0.467)
-    -5.571      -0.066   intercept * h(v1 - 0.052) * h(0.467 - v1)
-   -70.206      -0.042   intercept * h(0.052 - v1) * h(v1 - -0.334) * h(v3 - 1.667)
-    -3.913      -0.073   intercept * h(0.052 - v1) * h(v1 - -0.334) * h(1.667 - v3)
-    11.846       0.059   intercept * h(v1 - 0.052) * h(v2 - -0.799) * h(0.318 - v1)
-     0.042       0.054   intercept * h(v1 - 0.052) * h(v1 - 0.467) * h(v3 - -1.295)
-    -0.305      -0.029   intercept * h(v1 - 0.052) * h(v1 - 0.467) * h(-1.295 - v3)
-    -6.441      -0.034   intercept * h(0.052 - v1) * h(v1 - -0.334) * h(-0.483 - v2)
-  6597.944       0.043   intercept * h(0.052 - v1) * h(v1 - -0.334) * h(v2 - -0.483) * h(-0.339 - v2)
+    -0.548       --      intercept
+    -0.347      -0.212   intercept * h(0.052 - v1)
+     0.491       0.382   intercept * h(v1 - 0.052) * h(v2 - -0.800)
+    -0.482      -0.104   intercept * h(v1 - 0.052) * h(-0.800 - v2)
+    -0.381      -0.068   intercept * h(0.052 - v1) * h(v2 - 1.254)
+     0.478       0.464   intercept * h(0.052 - v1) * h(1.254 - v2)
+     0.453       0.477   intercept * h(0.052 - v1) * h(-0.334 - v1)
+     0.352       0.304   intercept * h(v1 - 0.052) * h(v1 - 0.467)
+     0.057       0.073   intercept * h(v1 - 0.052) * h(v1 - 0.467) * h(v3 - -1.296)
 
 ````
 
@@ -218,7 +205,7 @@ mean(res.^2)
 ````
 
 ````
-0.9232496017082579
+0.9632415036129839
 ````
 
 Below we plot three conditional mean functions of the form E[y |
