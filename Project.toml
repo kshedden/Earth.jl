@@ -1,7 +1,7 @@
 name = "Earth"
 uuid = "ae24ea40-bf11-4146-8ed5-41e60b83d222"
 authors = ["kshedden <kshedden@umich.edu>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
