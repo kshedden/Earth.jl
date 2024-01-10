@@ -15,5 +15,10 @@ StatsAPI = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
-StatsAPI = "1.6.0"
+StatsAPI = "1.7.0"
 julia = "1.9"
+Aqua = "0.8.4"
+CategoricalArrays = "0.10.8"
+DataFrames = "1.6.1"
+Lasso = "0.7.1"
+StatsBase = "0.34.2"

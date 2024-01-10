@@ -82,7 +82,7 @@ end
     y = X[:, 2] + X[:, 2] .* X[:, 3] + randn(rng, n)
 
     cfg = EarthConfig(; maxit=3, refit=:ols)
-    m = fit(EarthModel, X, y; config=cfg, verbosity=1)
+    m = fit(EarthModel, X, y; config=cfg, verbosity=0)
     @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.02)
 
     # Check that D spans the intended subspace
@@ -161,7 +161,7 @@ end
 
     for prune in [false, true]
         cfg = EarthConfig(; maxit=4, num_knots=100, prune=prune)
-        m = fit(EarthModel, X, y; config=cfg, verbosity=1)
+        m = fit(EarthModel, X, y; config=cfg, verbosity=0)
         yhat1 = predict(m)
         yhat2 = predict(m, X)
         @test isapprox(yhat1, yhat2)
@@ -208,7 +208,7 @@ end
 
     for X in [Xvec, Xtup, Xnt, Xdf]
         cfg = EarthConfig(; maxit=5)
-        m = fit(EarthModel, X, y; config=cfg, verbosity=1)
+        m = fit(EarthModel, X, y; config=cfg, verbosity=0)
         io = IOBuffer()
         println(io, m)
         @test isapprox(mean(residuals(m).^2), 1, atol=0.01, rtol=0.1)
@@ -262,7 +262,5 @@ end
     @assert isapprox(m0.sdx, mw.sdx)
     @assert isapprox(m0.meany, mw.meany)
     @assert isapprox(m0.sdy, mw.sdy)
-
-    println(mean(abs.(y0_pred - y_pred[1:500])))
     @assert isapprox(y0_pred, y_pred[1:500])
 end
